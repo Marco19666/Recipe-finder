@@ -204,8 +204,31 @@ async function loadRecipe(url, fallback = {}) {
       image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps;
     document.querySelector("#recipe-shopping").addEventListener("click", () => addShoppingIngredients(ingredients));
     document.querySelector("#toggle-favorite").addEventListener("click", () => {
-      const active = toggleFavorite(savedItem); const button = document.querySelector("#toggle-favorite");
-      button.textContent = active ? "♥ Ricetta preferita" : "♡ Ricetta preferita"; button.setAttribute("aria-pressed", String(active));
+      const button = document.querySelector("#toggle-favorite");
+      const existing = isFavorite(url);
+      if (existing) {
+        toggleFavorite(savedItem);
+        button.textContent = "♡ Ricetta preferita";
+        button.setAttribute("aria-pressed", "false");
+        const chooser = document.querySelector("#favorite-category-choice");
+        if (chooser) chooser.remove();
+        return;
+      }
+      let chooser = document.querySelector("#favorite-category-choice");
+      if (chooser) return;
+      chooser = document.createElement("div");
+      chooser.id = "favorite-category-choice";
+      chooser.className = "favorite-category-choice";
+      chooser.innerHTML = '<label for="favorite-save-category">In quale categoria vuoi salvarla?</label><select id="favorite-save-category"><option value="" selected disabled>Scegli una categoria</option><option>Primo</option><option>Secondo</option><option>Contorno</option><option>Antipasto</option><option>Dolce</option><option>Altro</option></select><button type="button" class="recipe-button" id="confirm-favorite-category">Salva tra le preferite</button>';
+      button.insertAdjacentElement("afterend", chooser);
+      document.querySelector("#confirm-favorite-category").addEventListener("click", () => {
+        const category = document.querySelector("#favorite-save-category").value;
+        if (!category) { notify("Scegli una categoria prima di salvare."); return; }
+        toggleFavorite({ ...savedItem, category });
+        button.textContent = "♥ Ricetta preferita";
+        button.setAttribute("aria-pressed", "true");
+        chooser.remove();
+      });
     });
   } catch (error) {
     recipeContent.innerHTML = '<div class="error-state">' + esc(error.message) + '</div>';
