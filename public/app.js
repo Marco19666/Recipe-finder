@@ -223,7 +223,7 @@ function addShoppingIngredients(ingredients) {
 function renderShoppingList() {
   const items = getShoppingItems();
   shoppingList.innerHTML = items.length ? items.map(item =>
-    '<label class="shopping-item"><input type="checkbox" data-shopping-check="' + esc(item.id) + '"' + (item.checked ? " checked" : "") + '><span' + (item.checked ? ' class="checked"' : '') + '>' + esc(item.text) + '</span><button type="button" class="favorite-remove" data-shopping-delete="' + esc(item.id) + '">Rimuovi</button></label>'
+    '<div class="shopping-item"><input type="checkbox" aria-label="Segna come acquistato" data-shopping-check="' + esc(item.id) + '"' + (item.checked ? " checked" : "") + '><span' + (item.checked ? ' class="checked"' : '') + '>' + esc(item.text) + '</span><button type="button" class="favorite-remove" data-shopping-delete="' + esc(item.id) + '">Rimuovi</button></div>'
   ).join("") : '<div class="empty-state">La lista è vuota. Apri una ricetta e premi “Ingredienti nella lista della spesa”.</div>';
   shoppingList.querySelectorAll("[data-shopping-check]").forEach(input => input.addEventListener("change", () => {
     saveShoppingItems(getShoppingItems().map(item => item.id === input.dataset.shoppingCheck ? { ...item, checked: input.checked } : item));
