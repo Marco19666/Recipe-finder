@@ -18,7 +18,7 @@ ALLOWED_SITES = {
     "cucchiaio.it",
     "fattoincasadabenedetta.it",
     "ricettedellanonna.net",
-    "giallozafferano.it",
+    "tavolartegusto.it",
 }
 DUCKDUCKGO_ENDPOINT = "https://html.duckduckgo.com/html/"
 USER_AGENT = "Mozilla/5.0 (compatible; RecipeFinder/0.1; recipe search)"
