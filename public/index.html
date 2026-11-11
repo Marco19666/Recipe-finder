@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=5">
+  <link rel="stylesheet" href="/styles.css?v=6">
 </head>
 <body>
   <header class="topbar">
@@ -45,6 +45,7 @@
         <label for="personal-title">Nome della ricetta</label><input id="personal-title" required maxlength="100" placeholder="Es. Lasagne della nonna">
         <label for="personal-ingredients">Ingredienti</label><textarea id="personal-ingredients" required rows="4" placeholder="Scrivi gli ingredienti, uno per riga"></textarea>
         <label for="personal-steps">Preparazione</label><textarea id="personal-steps" required rows="5" placeholder="Descrivi i passaggi, uno per riga"></textarea>
+        <label for="personal-photo">Foto della ricetta (facoltativa)</label><input id="personal-photo" type="file" accept="image/*">
         <label for="personal-time">Tempo di preparazione (minuti, facoltativo)</label><input id="personal-time" type="number" min="1" max="1440" placeholder="Es. 45">
         <button type="submit" class="recipe-button">Salva ricetta personale</button>
       </form>
@@ -66,6 +67,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>ricetta.</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=4" defer></script>
+  <script src="/app.js?v=5" defer></script>
 </body>
 </html>
