@@ -19,10 +19,14 @@ const personalButton = document.querySelector("#show-personal");
 const personalCount = document.querySelector("#personal-count");
 const PERSONAL_KEY = "recipe-finder-personal-recipes-v1";
 const FAVORITES_KEY = "recipe-finder-favorites-v1";
+const SHOPPING_KEY = "recipe-finder-shopping-list-v1";
+const shoppingSection = document.querySelector("#shopping-section");
+const shoppingList = document.querySelector("#shopping-list");
+const shoppingCount = document.querySelector("#shopping-count");
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
-  resultsSection.hidden = true; favoritesSection.hidden = true; welcomeSection.hidden = true;
+  resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
   personalSection.hidden = false;
   document.querySelector('#personal-form').hidden = true;
   document.querySelector('#personal-add').hidden = false;
@@ -52,16 +56,21 @@ function imageToDataUrl(file) {
   });
 }
 function renderPersonalRecipes() {
-  const items = getPersonalRecipes();
+  const all = getPersonalRecipes();
+  const term = (document.querySelector("#personal-search").value || "").trim().toLocaleLowerCase("it");
+  const category = document.querySelector("#personal-category-filter").value;
+  const items = all.filter(item => (!category || (item.category || "Altro") === category) &&
+    (!term || (item.title + " " + (item.ingredients || []).join(" ")).toLocaleLowerCase("it").includes(term)));
   personalGrid.innerHTML = items.length ? items.map((item, index) =>
-    '<article class="result-card">' + (item.photo ? '<img class="result-image" src="' + item.photo + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder" aria-hidden="true">✳</div>') + '<div class="result-body"><span class="result-source">Ricetta personale</span><h3>' + esc(item.title) + '</h3><div class="card-actions"><button class="recipe-button" data-personal-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-personal-delete="' + index + '">Elimina</button></div></div></article>'
-  ).join("") : '<div class="empty-state">Non hai ancora aggiunto ricette personali. Premi “Aggiungi ricetta” per iniziare.</div>';
+    '<article class="result-card">' + (item.photo ? '<img class="result-image" src="' + item.photo + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder" aria-hidden="true">✳</div>') + '<div class="result-body"><span class="result-source">Ricetta personale · ' + esc(item.category || "Altro") + '</span><h3>' + esc(item.title) + '</h3><div class="card-actions"><button class="recipe-button" data-personal-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-personal-delete="' + index + '">Elimina</button></div><button class="shopping-add" data-shopping-add="' + index + '" type="button">＋ Ingredienti nella lista</button></div></article>'
+  ).join("") : '<div class="empty-state">' + (all.length ? "Nessuna ricetta corrisponde alla ricerca o categoria scelta." : "Non hai ancora aggiunto ricette personali. Premi “Aggiungi ricetta” per iniziare.") + '</div>';
   personalGrid.querySelectorAll("[data-personal-open]").forEach(button => button.addEventListener("click", () => showPersonalRecipe(items[Number(button.dataset.personalOpen)])));
   personalGrid.querySelectorAll("[data-personal-delete]").forEach(button => button.addEventListener("click", () => {
     const item = items[Number(button.dataset.personalDelete)];
     savePersonalRecipes(getPersonalRecipes().filter(saved => saved.id !== item.id)); renderPersonalRecipes();
     notify("Ricetta personale eliminata.");
   }));
+  personalGrid.querySelectorAll("[data-shopping-add]").forEach(button => button.addEventListener("click", () => addShoppingIngredients(items[Number(button.dataset.shoppingAdd)].ingredients)));
 }
 function showPersonalRecipe(item) {
   modal.hidden = false; document.body.style.overflow = "hidden";
@@ -81,7 +90,7 @@ function toggleFavorite(item) {
   saveFavorites(exists ? items.filter(saved => saved.url !== item.url) : [item, ...items]);
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
-function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
 function renderFavorites() {
   const items = getFavorites();
   favoritesGrid.innerHTML = items.length ? items.map((item, index) => {
@@ -114,6 +123,7 @@ async function searchRecipes(query) {
   welcome.hidden = true;
   favoritesSection.hidden = true;
   personalSection.hidden = true;
+  shoppingSection.hidden = true;
   resultsSection.hidden = false;
   resultsTitle.textContent = "Ricette: " + query;
   resultCount.textContent = "Ricerca in corso";
@@ -188,7 +198,52 @@ async function loadRecipe(url, fallback = {}) {
   }
 }
 
+function getShoppingItems() { try { return JSON.parse(localStorage.getItem(SHOPPING_KEY) || "[]"); } catch { return []; } }
+function saveShoppingItems(items) {
+  localStorage.setItem(SHOPPING_KEY, JSON.stringify(items));
+  shoppingCount.textContent = items.length;
+}
+function addShoppingIngredients(ingredients) {
+  const items = getShoppingItems();
+  const known = new Set(items.map(item => item.text.toLocaleLowerCase("it")));
+  let added = 0;
+  (ingredients || []).forEach(value => {
+    const text = String(value).trim();
+    if (text && !known.has(text.toLocaleLowerCase("it"))) {
+      items.push({ id: String(Date.now()) + "-" + added, text, checked: false });
+      known.add(text.toLocaleLowerCase("it")); added++;
+    }
+  });
+  saveShoppingItems(items);
+  notify(added ? added + " ingredienti aggiunti alla lista." : "Gli ingredienti sono già nella lista.");
+}
+function renderShoppingList() {
+  const items = getShoppingItems();
+  shoppingList.innerHTML = items.length ? items.map(item =>
+    '<label class="shopping-item"><input type="checkbox" data-shopping-check="' + esc(item.id) + '"' + (item.checked ? " checked" : "") + '><span' + (item.checked ? ' class="checked"' : '') + '>' + esc(item.text) + '</span><button type="button" class="favorite-remove" data-shopping-delete="' + esc(item.id) + '">Rimuovi</button></label>'
+  ).join("") : '<div class="empty-state">La lista è vuota. Apri una ricetta personale e premi “Ingredienti nella lista”.</div>';
+  shoppingList.querySelectorAll("[data-shopping-check]").forEach(input => input.addEventListener("change", () => {
+    saveShoppingItems(getShoppingItems().map(item => item.id === input.dataset.shoppingCheck ? { ...item, checked: input.checked } : item));
+    renderShoppingList();
+  }));
+  shoppingList.querySelectorAll("[data-shopping-delete]").forEach(button => button.addEventListener("click", () => {
+    saveShoppingItems(getShoppingItems().filter(item => item.id !== button.dataset.shoppingDelete)); renderShoppingList();
+  }));
+}
+function showShopping() {
+  resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; welcomeSection.hidden = true;
+  shoppingSection.hidden = false; renderShoppingList();
+}
+shoppingCount.textContent = getShoppingItems().length;
+document.querySelector("#show-shopping").addEventListener("click", showShopping);
+document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#shopping-clear").addEventListener("click", () => {
+  saveShoppingItems([]); renderShoppingList(); notify("Lista della spesa svuotata.");
+});
+
 personalCount.textContent = getPersonalRecipes().length;
+document.querySelector("#personal-search").addEventListener("input", renderPersonalRecipes);
+document.querySelector("#personal-category-filter").addEventListener("change", renderPersonalRecipes);
 personalButton.addEventListener("click", showPersonal);
 document.querySelector('#personal-add').addEventListener('click', () => {
   document.querySelector('#personal-form').hidden = false;
@@ -207,7 +262,7 @@ document.querySelector("#personal-form").addEventListener("submit", async event 
   try {
     const photo = await imageToDataUrl(photoFile);
     const items = getPersonalRecipes();
-    items.unshift({ id: String(Date.now()), title, ingredients, steps, time, photo });
+    items.unshift({ id: String(Date.now()), title, category: document.querySelector("#personal-category").value, ingredients, steps, time, photo });
     savePersonalRecipes(items);
     event.target.reset();
     event.target.hidden = true;
