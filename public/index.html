@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ef">
+  <meta name="description" content="Cerca ricette sui tuoi siti di cucina preferiti.">
+  <title>Ricetta — trova la tua prossima ricetta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Ricetta home"><span class="brand-mark">R</span><span>ricetta<span class="brand-dot">.</span></span></a>
+    <span class="top-note">Ispirazione, ogni giorno</span>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-line"></span> IL PROSSIMO PIATTO PARTE DA QUI</div>
+      <h1>Che cosa ti va<br>di <em>cucinare?</em></h1>
+      <p class="hero-copy">Una ricerca, tante idee buone. Trova ricette dai migliori siti di cucina italiani.</p>
+      <form id="search-form" class="search-form">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="query" type="search" placeholder="Es. pasta al pesto, torta di mele..." autocomplete="off" minlength="2" required>
+        <button type="submit">Cerca ricette <span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="popular"><span>PROVA:</span><button class="chip" data-query="pasta alla carbonara">Carbonara</button><button class="chip" data-query="torta di mele">Torta di mele</button><button class="chip" data-query="polpette al sugo">Polpette</button></div>
+      <div class="source-line"><span class="source-dot"></span> Fonti selezionate: GialloZafferano, Cookist, Cucchiaio d'Argento e altri</div>
+    </section>
+    <section id="results-section" class="results-section" hidden>
+      <div class="section-heading"><div><div class="eyebrow">LA SELEZIONE PER TE</div><h2 id="results-title">Risultati</h2></div><span id="result-count" class="result-count"></span></div>
+      <div id="results" class="results-grid"></div>
+    </section>
+    <section id="welcome" class="welcome">
+      <div class="welcome-icon">✳</div>
+      <h2>La tua prossima ricetta<br>è a portata di ricerca.</h2>
+      <p>Cerchiamo tra siti di cucina selezionati. Apri una ricetta per vedere ingredienti, tempi e procedimento.</p>
+    </section>
+  </main>
+  <div id="recipe-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <article class="recipe-panel" role="dialog" aria-modal="true" aria-labelledby="recipe-title">
+      <button class="close-button" data-close aria-label="Chiudi">×</button>
+      <div id="recipe-content"></div>
+    </article>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <footer><span>ricetta.</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
