@@ -116,3 +116,22 @@ footer{font-size:12px;line-height:1.6}
  .personal-form{padding:19px}footer{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Identità visiva Cosa Cucino? */
+.brand{font-size:22px;letter-spacing:-.7px;gap:11px}
+.brand-mark{width:38px;height:38px;font-size:23px;background:linear-gradient(145deg,#547b58,#304d36);box-shadow:0 4px 12px rgba(48,77,54,.18)}
+.brand-dot{color:var(--orange)}
+.hero{position:relative}
+.hero:before{content:"";position:absolute;z-index:-1;left:50%;top:18px;transform:translateX(-50%);width:min(760px,95vw);height:420px;border-radius:50%;background:radial-gradient(ellipse,rgba(222,231,213,.55),rgba(245,244,238,0) 70%);pointer-events:none}
+h1{letter-spacing:-2.5px}
+.search-form{border:1px solid #d5ddcf;box-shadow:0 14px 38px rgba(47,73,49,.10)}
+.search-form:focus-within{border-color:#789879;box-shadow:0 0 0 4px rgba(121,153,120,.13),0 14px 38px rgba(47,73,49,.09)}
+.search-form button{box-shadow:0 3px 8px rgba(40,69,45,.16)}
+.home-actions{gap:10px}
+.favorites-home-button,.back-home-button{background:#fff;border-color:#d8e0d4;box-shadow:0 3px 10px rgba(47,73,49,.04)}
+.favorites-home-button:hover,.back-home-button:hover{transform:translateY(-1px);border-color:#9bb49a;background:#f0f4ed}
+.site-chooser{box-shadow:0 8px 24px rgba(47,73,49,.045)}
+.welcome{background:rgba(255,255,255,.48);border:1px solid var(--line);border-radius:18px;padding:34px 24px}
+footer span:first-child{font-family:"Playfair Display",Georgia,serif;font-size:15px}
+@media(max-width:520px){.brand{font-size:20px}.brand-mark{width:35px;height:35px}.hero:before{height:340px}}
