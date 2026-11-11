@@ -47,7 +47,7 @@ async function searchRecipes(query) {
       return;
     }
     resultsGrid.innerHTML = results.map((item, index) => {
-      const image = item.image && index < 4 ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
+      const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
       return '<article class="result-card">' + image +
         '<div class="result-body"><span class="result-source">' + esc(item.source) + '</span>' +
