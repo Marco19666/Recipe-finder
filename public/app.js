@@ -140,8 +140,10 @@ async function loadDailyRecipe() {
     primarySite=dailySites[Math.floor(Math.random()*dailySites.length)];
     try{localStorage.setItem(savedChoiceKey,JSON.stringify({day:dayNumber,site:primarySite}));}catch{}
   }
-  // Mantiene il sito casuale come prima scelta e passa alle altre fonti solo se necessario.
-  for(const site of [primarySite,...dailySites.filter(value=>value!==primarySite)]){
+  // Prova il sito casuale del giorno e, se serve, una sola seconda fonte.
+  const fallbackSites=dailySites.filter(value=>value!==primarySite);
+  const fallbackSite=fallbackSites[Math.floor(Math.random()*fallbackSites.length)];
+  for(const site of [primarySite,fallbackSite]){
     try{
       const response=await fetch("/api/search?q="+encodeURIComponent(query)+"&sites="+encodeURIComponent(site)+"&_="+Date.now(),{cache:"no-store"});
       if(!(response.headers.get("content-type")||"").includes("application/json")) continue;
