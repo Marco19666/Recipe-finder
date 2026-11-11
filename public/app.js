@@ -54,6 +54,7 @@ async function searchRecipes(query) {
   queryInput.value = query;
   setLoading(true);
   welcome.hidden = true;
+  favoritesSection.hidden = true;
   resultsSection.hidden = false;
   resultsTitle.textContent = "Ricette: " + query;
   resultCount.textContent = "Ricerca in corso";
