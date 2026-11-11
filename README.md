@@ -8,6 +8,7 @@ Applicazione web in italiano per cercare ricette su siti di cucina selezionati e
 - Cloudflare Python Workers + Workers Static Assets
 - HTML, CSS e JavaScript vanilla per il frontend
 - Brave Search API per la ricerca limitata ai domini selezionati
+- GitHub Actions per il deploy automatico a ogni push su main
 
 ## Fonti iniziali
 - GialloZafferano — giallozafferano.it
@@ -36,25 +37,24 @@ La ricerca usa un filtro di dominio e l'API Brave Search. L'estrazione legge sol
 4. Avvia il progetto con: uv run pywrangler dev
 5. Apri http://localhost:8787.
 
-## Deploy su Cloudflare
+## Deploy automatico con GitHub Actions
+Il workflow .github/workflows/deploy.yml pubblica il Worker su Cloudflare a ogni push sul branch main.
+
+Nel repository GitHub, apri Settings → Secrets and variables → Actions e crea questi repository secrets:
+- CLOUDFLARE_API_TOKEN — token Cloudflare con permessi di deploy Workers
+- CLOUDFLARE_ACCOUNT_ID — ID del tuo account Cloudflare
+
+Poi, nel dashboard Cloudflare, apri il Worker Recipe Finder → Settings → Variables and Secrets e aggiungi BRAVE_SEARCH_API_KEY come secret. La chiave di ricerca non deve essere salvata in GitHub né nel frontend.
+
+Dopo aver configurato i due secrets GitHub e il secret Cloudflare, esegui un push su main oppure avvia manualmente il workflow dalla scheda Actions.
+
+## Deploy manuale
 Dalla root del repository:
 1. Aggiungi il secret con: uv run pywrangler secret put BRAVE_SEARCH_API_KEY
 2. Esegui il deploy con: uv run pywrangler deploy
 
-Inserisci la chiave quando richiesta.
-
-## Collegamento GitHub
-Il progetto è un singolo Cloudflare Worker che serve sia l'API FastAPI sia i file statici dalla cartella public/. Per mantenere una sola origine e un solo deploy, collega il repository a Workers Builds.
-
-Nel dashboard Cloudflare:
-1. Workers & Pages → Create → Workers.
-2. Connect to Git → seleziona Marco19666/Recipe-finder.
-3. Configura il comando di build/deploy secondo la guida Python Workers e usa uv run pywrangler deploy.
-4. Aggiungi BRAVE_SEARCH_API_KEY in Settings → Variables and Secrets come secret.
-5. Avvia il primo deploy e verifica /api/health.
-
 ## Nota di compatibilità
-Cloudflare Python Workers usa Pyodide/WebAssembly. FastAPI è supportato ufficialmente; la compatibilità completa di recipe-scrapers e delle sue dipendenze va verificata con pywrangler dev e con un deploy di prova. Se una dipendenza nativa non è disponibile, servirà un adattamento o un runtime Python tradizionale. Non considerare il deploy riuscito finché l'estrazione reale non è stata testata.
+Cloudflare Python Workers usa Pyodide/WebAssembly. FastAPI è supportato ufficialmente; la compatibilità completa di recipe-scrapers e delle sue dipendenze va verificata dal primo deploy. Se una dipendenza nativa non è disponibile, servirà un adattamento o un runtime Python tradizionale. Il workflow GitHub Actions farà emergere eventuali errori di packaging/deploy. Non considerare il deploy riuscito finché l'estrazione reale non è stata testata.
 
 ## Note legali e operative
 - Le pagine e i contenuti restano di proprietà dei rispettivi editori. L'app mostra il link alla fonte originale.
