@@ -265,7 +265,7 @@ async function loadRecipe(url, fallback = {}) {
   document.body.style.overflow = "hidden";
   recipeContent.innerHTML = '<div class="empty-state">Sto leggendo la ricetta dalla fonte originale...</div>';
   try {
-    const response = await fetch("/api/recipe?url=" + encodeURIComponent(url));
+    const response = await fetch("/api/recipe?url=" + encodeURIComponent(url), { cache: "no-store", headers: { "Accept": "application/json; charset=utf-8" } });
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       throw new Error("Il sito della ricetta ha restituito una risposta non valida. Riprova più tardi.");
