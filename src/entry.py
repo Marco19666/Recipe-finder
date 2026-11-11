@@ -281,8 +281,8 @@ def _looks_like_recipe_url(url: str) -> bool:
     return any(part in path for part in ("/ricetta/", "/recipe/", "/ricette-", "/ricetta-")) or path.count("/") >= 2
 
 
-def _matches_query(title: str, description: str, query: str) -> bool:
-    """Match recipe titles flexibly while rejecting clearly unrelated article titles."""
+def _query_match_score(title: str, description: str, query: str) -> int:
+    """Score recipe relevance flexibly; reject clearly off-topic titles, not valid variants."""
     import re
     import unicodedata
     from difflib import SequenceMatcher
@@ -296,36 +296,46 @@ def _matches_query(title: str, description: str, query: str) -> bool:
                  "del", "dei", "di", "da", "in", "il", "lo", "la", "le", "gli",
                  "un", "una", "uno", "e", "a"}
     terms = [term for term in normalize(query) if len(term) > 2 and term not in stopwords]
-    if not terms:
-        return True
-
     title_words = normalize(title)
     description_words = normalize(description)
-    if not title_words:
-        return False
+    if not terms or not title_words:
+        return 0
 
     off_topic = {"vino", "vini", "abbinare", "abbinamento", "abbinamenti",
                  "quale", "quali", "consigli", "menu"}
     if any(word in off_topic for word in title_words) and not any(word in terms for word in off_topic):
-        return False
+        return 0
 
     def has_match(term, words):
         for word in words:
             if term == word or term in word or word in term:
                 return True
-            if min(len(term), len(word)) >= 5 and SequenceMatcher(None, term, word).ratio() >= 0.78:
+            if min(len(term), len(word)) >= 5 and SequenceMatcher(None, term, word).ratio() >= 0.70:
                 return True
         return False
 
-    title_matches = sum(has_match(term, title_words) for term in terms)
-    description_matches = sum(has_match(term, description_words) for term in terms)
+    title_hits = sum(has_match(term, title_words) for term in terms)
+    description_hits = sum(has_match(term, description_words) for term in terms)
+    combined_hits = sum(has_match(term, title_words + description_words) for term in terms)
+
     if len(terms) == 1:
-        return title_matches == 1 or description_matches == 1
-    required_in_title = len(terms) if len(terms) <= 2 else max(2, len(terms) - 1)
-    return title_matches >= required_in_title or (
-        title_matches >= max(1, required_in_title - 1)
-        and title_matches + description_matches >= len(terms)
-    )
+        if title_hits:
+            return 100
+        return 55 if description_hits else 0
+
+    # Prefer titles containing the whole dish, but allow a missing term in the
+    # description instead of discarding a potentially valid recipe.
+    if combined_hits < len(terms):
+        return 0
+    if title_hits == len(terms):
+        return 100
+    if title_hits >= 1:
+        return 75 + int(20 * title_hits / len(terms))
+    return 0
+
+
+def _matches_query(title: str, description: str, query: str) -> bool:
+    return _query_match_score(title, description, query) > 0
 
 async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> list[dict]:
     base = "https://" + site
@@ -398,16 +408,33 @@ async def search(q: str = Query(min_length=2, max_length=100)):
 
     # Keep the response small: large result batches and dozens of page fetches
     # can exceed Cloudflare Workers' memory limits.
-    results, seen = [], set()
+    candidates, seen = [], set()
     for batch in batches:
         if isinstance(batch, Exception):
             continue
-        site_count = 0
         for item in batch:
-            if item["url"] not in seen and site_count < 2 and len(results) < 10:
-                seen.add(item["url"])
-                results.append(item)
-                site_count += 1
+            if item["url"] in seen:
+                continue
+            seen.add(item["url"])
+            item["_relevance"] = _query_match_score(
+                item.get("title", ""), item.get("description", ""), q
+            )
+            if item["_relevance"] > 0:
+                candidates.append(item)
+
+    # Rank all publisher results together. Keep source diversity without
+    # imposing the old two-results-per-site restriction.
+    candidates.sort(key=lambda item: item["_relevance"], reverse=True)
+    results, site_counts = [], {}
+    for item in candidates:
+        site = item.get("source", "")
+        if site_counts.get(site, 0) >= 3:
+            continue
+        item.pop("_relevance", None)
+        results.append(item)
+        site_counts[site] = site_counts.get(site, 0) + 1
+        if len(results) >= 10:
+            break
 
     # Enrich every returned card, with bounded concurrency.
     async with httpx.AsyncClient(
