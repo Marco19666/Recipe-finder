@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.python-version
+.uv/
+node_modules/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+.DS_Store
