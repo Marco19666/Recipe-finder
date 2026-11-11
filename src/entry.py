@@ -25,7 +25,7 @@ USER_AGENT = "RecipeFinder/0.1 (recipe search; respects publisher access control
 def allowed_host(url: str) -> str | None:
     try:
         parsed = urlparse(url)
-        host = (parsed.hostname or "").lower().rstrip(".")
+        host = (parsed.hostname or "").lower().rstrip(".").removeprefix("www.")
         if parsed.scheme != "https" or host not in ALLOWED_SITES:
             return None
         return host
@@ -72,8 +72,9 @@ async def sites():
 
 
 @app.get("/api/search")
-async def search(q: str = Query(min_length=2, max_length=100)):
-    api_key = os.environ.get("BRAVE_SEARCH_API_KEY")
+async def search(request: Request, q: str = Query(min_length=2, max_length=100)):
+    env = request.scope["env"]
+    api_key = getattr(env, "BRAVE_SEARCH_API_KEY", None) or os.environ.get("BRAVE_SEARCH_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=503,
