@@ -79,7 +79,8 @@ function showPersonalRecipe(item) {
   recipeContent.innerHTML = '<span class="result-source">Ricetta personale</span><h2 id="recipe-title">' + esc(item.title) + '</h2>' +
     (item.photo ? '<img class="recipe-photo" src="' + item.photo + '" alt="' + esc(item.title) + '">' : '') +
     (item.time ? '<div class="recipe-meta">Tempo di preparazione: ' + esc(item.time) + ' min</div>' : '') +
-    '<h3>Ingredienti</h3><ul>' + ingredients + '</ul><h3>Preparazione</h3><ol>' + steps + '</ol>';
+    '<button type="button" class="shopping-add" id="personal-modal-shopping">＋ Ingredienti nella lista della spesa</button><h3>Ingredienti</h3><ul>' + ingredients + '</ul><h3>Preparazione</h3><ol>' + steps + '</ol>';
+  document.querySelector("#personal-modal-shopping").addEventListener("click", () => addShoppingIngredients(item.ingredients));
 }
 function getFavorites() { try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]"); } catch { return []; } }
 function saveFavorites(items) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(items)); updateFavoritesCount(); }
@@ -188,7 +189,9 @@ async function loadRecipe(url, fallback = {}) {
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
       '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
       '<button type="button" id="toggle-favorite" class="favorite-toggle" aria-pressed="' + isFavorite(url) + '">' + (isFavorite(url) ? "♥ Ricetta preferita" : "♡ Ricetta preferita") + '</button>' +
+      '<button type="button" id="recipe-shopping" class="shopping-add">＋ Ingredienti nella lista della spesa</button>' +
       image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps;
+    document.querySelector("#recipe-shopping").addEventListener("click", () => addShoppingIngredients(ingredients));
     document.querySelector("#toggle-favorite").addEventListener("click", () => {
       const active = toggleFavorite(savedItem); const button = document.querySelector("#toggle-favorite");
       button.textContent = active ? "♥ Ricetta preferita" : "♡ Ricetta preferita"; button.setAttribute("aria-pressed", String(active));
@@ -221,7 +224,7 @@ function renderShoppingList() {
   const items = getShoppingItems();
   shoppingList.innerHTML = items.length ? items.map(item =>
     '<label class="shopping-item"><input type="checkbox" data-shopping-check="' + esc(item.id) + '"' + (item.checked ? " checked" : "") + '><span' + (item.checked ? ' class="checked"' : '') + '>' + esc(item.text) + '</span><button type="button" class="favorite-remove" data-shopping-delete="' + esc(item.id) + '">Rimuovi</button></label>'
-  ).join("") : '<div class="empty-state">La lista è vuota. Apri una ricetta personale e premi “Ingredienti nella lista”.</div>';
+  ).join("") : '<div class="empty-state">La lista è vuota. Apri una ricetta e premi “Ingredienti nella lista della spesa”.</div>';
   shoppingList.querySelectorAll("[data-shopping-check]").forEach(input => input.addEventListener("change", () => {
     saveShoppingItems(getShoppingItems().map(item => item.id === input.dataset.shoppingCheck ? { ...item, checked: input.checked } : item));
     renderShoppingList();
