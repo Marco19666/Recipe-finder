@@ -176,10 +176,6 @@ async function searchRecipes(query) {
   queryInput.value = query;
   const selectedSites = getSelectedSites();
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
-  if (selectedSites.length > 3 && sessionStorage.getItem("recipe-finder-many-sites-reminder-v1") !== "shown") {
-    sessionStorage.setItem("recipe-finder-many-sites-reminder-v1", "shown");
-    notify("Promemoria: con più di 3 siti la ricerca potrebbe richiedere più tempo o incontrare rallentamenti. Puoi continuare normalmente.", 6500);
-  }
   setLoading(true);
   welcome.hidden = true;
   favoritesSection.hidden = true;
@@ -188,47 +184,74 @@ async function searchRecipes(query) {
   resultsSection.hidden = false;
   resultsTitle.textContent = "Ricette: " + query;
   resultCount.textContent = "Ricerca in corso";
-  resultsGrid.innerHTML = '<div class="empty-state">Sto cercando tra i siti di cucina...</div>';
-  try {
-    let data = null;
-    let lastError = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(selectedSites.join(",")) + "&_=" + Date.now(), { cache: "no-store" });
-        const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-          throw new Error("Il servizio di ricerca ha restituito una pagina non valida.");
-        }
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile.");
-        data = payload;
-        if ((data.results || []).length > 0 || attempt === 1) break;
-        resultsGrid.innerHTML = '<div class="empty-state">Nessun risultato al primo tentativo. Sto riprovando automaticamente...</div>';
-      } catch (error) {
-        lastError = error;
-        if (attempt === 1) throw error;
-        resultsGrid.innerHTML = '<div class="empty-state">La ricerca ha avuto un problema temporaneo. Riprovo automaticamente...</div>';
-      }
-      await new Promise(resolve => window.setTimeout(resolve, 700));
-    }
-    if (!data && lastError) throw lastError;
-    const results = data?.results || [];
-    resultCount.textContent = results.length + (results.length === 1 ? " risultato" : " risultati");
-    if (!results.length) {
-      resultsGrid.innerHTML = '<div class="empty-state">Non ho trovato ricette per questa ricerca. Prova con un altro ingrediente o piatto.</div>';
-      return;
-    }
-    resultsGrid.innerHTML = results.map((item, index) => {
+  const progress = document.querySelector("#search-progress");
+  const progressTitle = document.querySelector("#search-progress-title");
+  const progressDetail = document.querySelector("#search-progress-detail");
+  const progressBar = document.querySelector("#search-progress-bar");
+  if (progress) progress.hidden = false;
+  if (progress) progress.classList.remove("is-done");
+  const found = [];
+  const seen = new Set();
+  const failedSites = [];
+  const durations = [];
+  const startedAt = Date.now();
+  const renderResults = () => {
+    resultsGrid.innerHTML = found.length ? found.map((item, index) => {
       const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
       return '<article class="result-card">' + image +
         '<div class="result-body"><span class="result-source">' + esc(item.source) + '</span>' +
         '<h3>' + esc(item.title) + '</h3><p>' + description + '</p>' +
         '<div class="card-actions"><button class="recipe-button" data-recipe="' + index + '">Ingredienti e procedimento</button></div></div></article>';
-    }).join("");
+    }).join("") : '<div class="empty-state">Sto cercando ricette complete nelle fonti selezionate...</div>';
     resultsGrid.querySelectorAll("[data-recipe]").forEach(button => {
-      button.addEventListener("click", () => loadRecipe(results[Number(button.dataset.recipe)].url, results[Number(button.dataset.recipe)]));
+      button.addEventListener("click", () => loadRecipe(found[Number(button.dataset.recipe)].url, found[Number(button.dataset.recipe)]));
     });
+    resultCount.textContent = found.length + (found.length === 1 ? " ricetta valida" : " ricette valide");
+  };
+  try {
+    let completed = 0;
+    for (let index = 0; index < selectedSites.length && found.length < 10; index++) {
+      const site = selectedSites[index];
+      const averageMs = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 8000;
+      const remainingEstimate = Math.ceil((averageMs * (selectedSites.length - index)) / 1000);
+      if (progressTitle) progressTitle.textContent = "Sto consultando " + site;
+      if (progressDetail) progressDetail.textContent = "Sito " + (index + 1) + " di " + selectedSites.length + " · tempo stimato rimanente: circa " + remainingEstimate + " secondi";
+      if (progressBar) progressBar.style.width = Math.round((index / selectedSites.length) * 100) + "%";
+      const siteStarted = Date.now();
+      try {
+        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(site) + "&_=" + Date.now(), { cache: "no-store" });
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) throw new Error("Risposta non valida");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile");
+        for (const item of payload.results || []) {
+          if (item && item.title && item.url && !seen.has(item.url)) {
+            seen.add(item.url);
+            found.push(item);
+            if (found.length >= 10) break;
+          }
+        }
+      } catch (error) {
+        failedSites.push(site);
+      }
+      durations.push(Date.now() - siteStarted);
+      completed++;
+      renderResults();
+      if (progressBar) progressBar.style.width = Math.round((completed / selectedSites.length) * 100) + "%";
+    }
+    if (progress) progress.classList.add("is-done");
+    if (progressTitle) progressTitle.textContent = found.length >= 10 ? "Obiettivo raggiunto" : "Ricerca completata";
+    if (progressDetail) {
+      const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      progressDetail.textContent = "Consultati " + completed + " siti in " + duration + " secondi." +
+        (failedSites.length ? " Fonti non raggiungibili: " + failedSites.join(", ") + "." : "");
+    }
+    if (progressBar) progressBar.style.width = "100%";
+    if (!found.length) {
+      resultsGrid.innerHTML = '<div class="empty-state">Non ho trovato ricette complete per questa ricerca. Prova con un altro ingrediente o piatto.</div>';
+      resultCount.textContent = "Nessuna ricetta valida";
+    }
   } catch (error) {
     resultsGrid.innerHTML = '<div class="error-state">' + esc(error.message) + '<br><br>La ricerca automatica non è riuscita. Riprova tra qualche secondo.</div>';
     resultCount.textContent = "Ricerca non riuscita";
