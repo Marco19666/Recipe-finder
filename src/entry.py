@@ -30,7 +30,7 @@ class DuckDuckGoResultsParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.results = []
-        self._current = None
+        self._active = None
         self._capture = None
 
     def handle_starttag(self, tag, attrs):
@@ -38,31 +38,23 @@ class DuckDuckGoResultsParser(HTMLParser):
         classes = attrs.get("class", "").split()
 
         if tag == "a" and "result__a" in classes:
-            self._current = {
+            self._active = {
                 "title": "",
                 "url": attrs.get("href", ""),
                 "description": "",
             }
+            self.results.append(self._active)
             self._capture = "title"
-        elif self._current is not None and "result__snippet" in classes:
+        elif tag == "a" and "result__snippet" in classes and self._active is not None:
             self._capture = "description"
 
     def handle_data(self, data):
-        if self._current is not None and self._capture:
-            self._current[self._capture] += data
+        if self._active is not None and self._capture:
+            self._active[self._capture] += data
 
     def handle_endtag(self, tag):
-        if self._current is None:
-            return
-        if tag == "a" and self._capture == "title":
+        if tag == "a":
             self._capture = None
-            url = self._current["url"]
-            if url:
-                self.results.append(self._current)
-                self._current = None
-        elif self._capture == "description" and tag in ("td", "div"):
-            self._capture = None
-
 
 def allowed_host(url: str) -> str | None:
     try:
