@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -345,26 +346,32 @@ async def search(q: str = Query(min_length=2, max_length=100)):
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Non riesco a contattare i siti di ricette. Riprova più tardi.") from exc
 
+    # Keep the response small: large result batches and dozens of page fetches
+    # can exceed Cloudflare Workers' memory limits.
     results, seen = [], set()
     for batch in batches:
         if isinstance(batch, Exception):
             continue
         site_count = 0
         for item in batch:
-            if item["url"] not in seen and site_count < 8:
+            if item["url"] not in seen and site_count < 2 and len(results) < 10:
                 seen.add(item["url"])
                 results.append(item)
                 site_count += 1
 
+    # Enrich only a few cards, with bounded concurrency.
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(8.0, connect=4.0),
+        timeout=httpx.Timeout(6.0, connect=3.0),
         follow_redirects=True,
         headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html"},
     ) as image_client:
-        results = await __import__("asyncio").gather(
-            *(_add_result_image(image_client, item) for item in results),
-            return_exceptions=False,
-        )
+        semaphore = asyncio.Semaphore(2)
+
+        async def enrich(item):
+            async with semaphore:
+                return await _add_result_image(image_client, item)
+
+        await asyncio.gather(*(enrich(item) for item in results[:4]))
 
     return {"query": q, "results": results}
 
