@@ -264,7 +264,7 @@ async function searchRecipes(query) {
   };
   try {
     let completed = 0;
-    for (let index = 0; index < selectedSites.length && found.length < 10; index++) {
+    for (let index = 0; index < selectedSites.length && found.length < 12; index++) {
       const site = selectedSites[index];
       const averageMs = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 10000;
       const remainingEstimate = Math.ceil((averageMs * (selectedSites.length - index)) / 1000);
@@ -282,7 +282,7 @@ async function searchRecipes(query) {
           if (item && item.title && item.url && !seen.has(item.url)) {
             seen.add(item.url);
             found.push(item);
-            if (found.length >= 10) break;
+            if (found.length >= 12) break;
           }
         }
       } catch (error) {
@@ -294,7 +294,7 @@ async function searchRecipes(query) {
       if (progressBar) progressBar.style.width = Math.round((completed / selectedSites.length) * 100) + "%";
     }
     if (progress) progress.classList.add("is-done");
-    if (progressTitle) progressTitle.textContent = found.length >= 10 ? "Obiettivo raggiunto" : "Ricerca completata";
+    if (progressTitle) progressTitle.textContent = found.length >= 12 ? "Obiettivo raggiunto" : "Ricerca completata";
     if (progressDetail) {
       const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
       progressDetail.textContent = "Consultati " + completed + " siti in " + duration + " secondi." +
