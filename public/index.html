@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=11">
+  <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
   <header class="topbar">
@@ -26,6 +26,17 @@
         <input id="query" type="search" placeholder="Es. pasta al pesto, torta di mele..." autocomplete="off" minlength="2" required>
         <button type="submit">Cerca ricette <span aria-hidden="true">↗</span></button>
       </form>
+      <fieldset class="site-chooser">
+        <legend>Cerca su questi siti</legend>
+        <label class="site-option site-all"><input id="sites-all" type="checkbox" checked> Tutti i siti</label>
+        <div class="site-options">
+          <label class="site-option"><input type="checkbox" name="search-site" value="misya.info" checked> Misya</label>
+          <label class="site-option"><input type="checkbox" name="search-site" value="cookist.it" checked> Cookist</label>
+          <label class="site-option"><input type="checkbox" name="search-site" value="cucchiaio.it" checked> Cucchiaio d'Argento</label>
+          <label class="site-option"><input type="checkbox" name="search-site" value="fattoincasadabenedetta.it" checked> Fatto in casa da Benedetta</label>
+          <label class="site-option"><input type="checkbox" name="search-site" value="ricettedellanonna.net" checked> Ricette della Nonna</label>
+        </div>
+      </fieldset>
       <div class="home-actions"><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button><button id="show-personal" class="favorites-home-button" type="button">＋ Le mie ricette <span id="personal-count">0</span></button><button id="show-shopping" class="favorites-home-button" type="button">🛒 Lista della spesa <span id="shopping-count">0</span></button></div>
       <div class="popular"><span>PROVA:</span><button class="chip" data-query="pasta alla carbonara">Carbonara</button><button class="chip" data-query="torta di mele">Torta di mele</button><button class="chip" data-query="polpette al sugo">Polpette</button></div>
       <div class="source-line"><span class="source-dot"></span> Fonti selezionate: Misya, Cookist, Cucchiaio d'Argento e altri</div>
@@ -75,6 +86,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>ricetta.</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=13" defer></script>
+  <script src="/app.js?v=14" defer></script>
 </body>
 </html>
