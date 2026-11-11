@@ -24,3 +24,5 @@
 .personal-form input[type="file"]{padding:9px;background:#fff}
 .result-card .result-image{width:100%;height:180px;object-fit:cover;display:block}
 .recipe-photo{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;margin:16px 0 22px}
+
+.personal-form[hidden],#personal-add[hidden]{display:none!important}.personal-add-area{display:flex;justify-content:center;margin:28px 0 10px}.personal-add-area .recipe-button{padding:13px 22px;font-size:13px}
