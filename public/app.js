@@ -23,6 +23,11 @@ const SHOPPING_KEY = "recipe-finder-shopping-list-v1";
 const shoppingSection = document.querySelector("#shopping-section");
 const shoppingList = document.querySelector("#shopping-list");
 const shoppingCount = document.querySelector("#shopping-count");
+const allSitesCheckbox = document.querySelector("#sites-all");
+const siteCheckboxes = [...document.querySelectorAll('input[name="search-site"]')];
+function getSelectedSites() { return siteCheckboxes.filter(input => input.checked).map(input => input.value); }
+allSitesCheckbox.addEventListener("change", () => { siteCheckboxes.forEach(input => { input.checked = allSitesCheckbox.checked; }); });
+siteCheckboxes.forEach(input => input.addEventListener("change", () => { allSitesCheckbox.checked = siteCheckboxes.every(site => site.checked); }));
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
@@ -130,6 +135,8 @@ function setLoading(loading) {
 
 async function searchRecipes(query) {
   queryInput.value = query;
+  const selectedSites = getSelectedSites();
+  if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
   setLoading(true);
   welcome.hidden = true;
   favoritesSection.hidden = true;
@@ -144,7 +151,7 @@ async function searchRecipes(query) {
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&_=" + Date.now(), { cache: "no-store" });
+        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(selectedSites.join(",")) + "&_=" + Date.now(), { cache: "no-store" });
         const contentType = response.headers.get("content-type") || "";
         if (!contentType.includes("application/json")) {
           throw new Error("Il servizio di ricerca ha restituito una pagina non valida.");
