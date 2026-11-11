@@ -51,3 +51,68 @@
 .site-all{font-weight:700;padding-bottom:10px}
 .site-options{display:flex;flex-wrap:wrap;gap:10px 18px}
 @media(max-width:520px){.site-chooser{margin:12px 0 18px;padding:11px 12px}.site-options{display:grid;grid-template-columns:1fr;gap:11px}}
+
+
+/* Visual polish: calmer spacing, stronger contrast and more readable text. */
+:root{--ink:#242820;--muted:#62665d;--paper:#f5f4ee;--card:#fff;--green:#3f6245;--green-dark:#2d4933;--line:#dedfd5;--orange:#c8754b}
+body{font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.topbar{background:rgba(255,255,255,.72);backdrop-filter:blur(10px)}
+.hero{padding-top:76px}
+.eyebrow{font-size:11px;letter-spacing:.14em}
+.hero-copy{font-size:16px;color:#5f635a}
+.search-form{border-radius:16px;box-shadow:0 12px 32px rgba(44,54,38,.08)}
+.search-form input{font-size:16px}
+.search-form input::placeholder{color:#777b72;opacity:1}
+.search-form button,.recipe-panel .source-visit{background:var(--green-dark)}
+.chip{font-size:13px;color:#50564d;background:rgba(255,255,255,.55);padding:8px 14px}
+.source-line{font-size:13px;color:#656a60}
+.site-chooser{background:#fff;border-color:#dfe2d8;border-radius:14px;padding:15px 18px;box-shadow:0 5px 18px rgba(44,54,38,.04)}
+.site-chooser legend{font-size:13px}
+.site-option{font-size:14px;line-height:1.45;padding:3px 0}
+.site-option input{width:17px;height:17px}
+.welcome{margin-top:22px}
+.welcome p{font-size:15px;color:#5f635a}
+.results-section{padding-top:30px}
+.section-heading{margin-bottom:26px}
+.section-heading h2{font-size:clamp(30px,4vw,38px)}
+.results-grid{gap:22px}
+.result-card{border-color:#e1e2d9;border-radius:16px;box-shadow:0 5px 18px rgba(42,48,37,.045);transition:transform .18s ease,box-shadow .18s ease}
+.result-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(42,48,37,.09)}
+.result-card .result-image{height:190px}
+.result-body{padding:19px}
+.result-source{font-size:11px;letter-spacing:.09em;color:#365b3d}
+.result-card h3{font-size:21px;line-height:1.35;color:#262b24}
+.result-card p{font-size:14px;line-height:1.65;color:#5d6259}
+.recipe-button,.text-link{font-size:13px}
+.recipe-button,.favorites-home-button,.back-home-button,.shopping-add{border-radius:9px}
+.recipe-button{padding:10px 14px}
+.empty-state,.error-state{font-size:15px;line-height:1.6}
+.recipe-panel{border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.2)}
+.recipe-panel h2{font-size:clamp(28px,5vw,38px);line-height:1.2}
+.recipe-panel h3{font-size:13px;letter-spacing:.09em}
+.recipe-panel li{font-size:15px;line-height:1.8;color:#343a32;margin:8px 0}
+.recipe-meta{font-size:14px;color:#555c52}
+.personal-form{padding:26px;border-radius:16px;box-shadow:0 6px 22px rgba(42,48,37,.05)}
+.personal-form label{font-size:14px}
+.personal-form input,.personal-form textarea,.personal-form select,.personal-tools input,.personal-tools select{font-size:15px;min-height:44px}
+.favorite-category-label{font-size:14px}
+.favorite-category{font-size:14px}
+.shopping-hint{font-size:15px;color:#5f635a}
+.shopping-list{border-radius:16px;padding:14px 20px}
+.shopping-item{font-size:15px;line-height:1.5}
+.favorites-home-button,.back-home-button{font-size:13px;padding:12px 17px}
+button,input,select,textarea{font-family:"DM Sans",sans-serif}
+button{transition:background-color .18s ease,border-color .18s ease,transform .18s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #9bb49a;outline-offset:3px}
+footer{font-size:12px;line-height:1.6}
+@media(max-width:760px){.hero{padding-top:58px}.results-grid{gap:15px}.result-card h3{font-size:19px}}
+@media(max-width:520px){
+ body{font-size:15px}.hero{padding:48px 16px 34px}h1{font-size:clamp(48px,13vw,60px);letter-spacing:-2px}
+ .hero-copy{font-size:15px}.search-form input{font-size:14px}.search-form button{font-size:12px}
+ .site-option{font-size:14px}.results-section{padding:18px 16px 65px}
+ .results-grid{grid-template-columns:1fr;gap:17px}.result-card .result-image{height:205px}
+ .result-body{padding:18px}.result-card h3{font-size:21px}.result-card p{font-size:14px}
+ .recipe-panel{padding:25px 19px;max-height:92vh}.recipe-panel li{font-size:14px}
+ .personal-form{padding:19px}footer{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
