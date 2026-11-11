@@ -221,7 +221,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
 
     try:
         async with httpx.AsyncClient(
-            timeout=15.0,
+            timeout=30.0,
             follow_redirects=False,
             headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
         ) as client:
