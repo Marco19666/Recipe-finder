@@ -41,3 +41,5 @@
 @media(max-width:520px){.personal-tools{grid-template-columns:1fr;gap:8px}}
 
 .favorite-category-label{display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--muted);font-size:12px}.favorite-category{flex:1;min-width:0;border:1px solid var(--line);border-radius:7px;background:#fff;padding:8px;font:12px 'DM Sans';color:var(--ink)}
+
+.favorite-category-choice{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff}.favorite-category-choice label{font-size:13px;font-weight:600}.favorite-category-choice select{width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;background:#fff;font:13px 'DM Sans';color:var(--ink)}
