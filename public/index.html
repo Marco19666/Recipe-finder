@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f5ef">
+  <meta name="theme-color" content="#3f6245">\n  <link rel="manifest" href="/manifest.webmanifest">\n  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">\n  <link rel="apple-touch-icon" href="/icons/icon.svg">
   <meta name="description" content="Cosa Cucino? Trova ogni giorno idee e ricette dai tuoi siti di cucina preferiti.">
   <title>Cosa Cucino? — trova la tua prossima ricetta</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=16">
+  <link rel="stylesheet" href="/styles.css?v=17">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Cosa Cucino? home"><span class="brand-mark">C</span><span>Cosa Cucino<span class="brand-dot">?</span></span></a>
-    <span class="top-note">Ispirazione, ogni giorno</span>
+    <div class="top-actions"><span class="top-note">Ispirazione, ogni giorno</span><button id="install-app" class="install-app-button" type="button" hidden>＋ Installa app</button></div>
   </header>
   <main>
     <section id="daily-recipe-section" class="results-section daily-recipe-section">
@@ -91,6 +91,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>Cosa Cucino?</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=18" defer></script>
+  <script src="/app.js?v=19" defer></script>
 </body>
 </html>
