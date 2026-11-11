@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from html.parser import HTMLParser
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -214,9 +214,9 @@ async def sites():
 
 @app.get("/api/search")
 async def search(q: str = Query(min_length=2, max_length=100)):
-    site_filter = " OR ".join("site:" + site for site in sorted(ALLOWED_SITES))
-    search_query = q + " (" + site_filter + ")"
-    params = {"q": search_query, "kl": "it-it"}
+    # Search broadly, then enforce the source whitelist on parsed result URLs.
+    # DuckDuckGo can interpret long parenthesized site: OR filters inconsistently.
+    params = {"q": q, "kl": "it-it"}
 
     try:
         async with httpx.AsyncClient(
@@ -236,7 +236,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
     results = []
     seen = set()
     for item in parser.results:
-        url = direct_result_url(item["url"])
+        url = direct_result_url(urljoin(DUCKDUCKGO_ENDPOINT, item["url"]))
         host = allowed_host(url)
         if host and url not in seen:
             seen.add(url)
