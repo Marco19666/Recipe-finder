@@ -429,23 +429,26 @@ async def search(
     if sites is None:
         selected_sites = sorted(ALLOWED_SITES)
     else:
-        requested_sites = {site.strip().lower() for site in sites.split(",") if site.strip()}
+        requested_sites = list(dict.fromkeys(site.strip().lower() for site in sites.split(",") if site.strip()))
         unknown_sites = requested_sites - ALLOWED_SITES
         if unknown_sites:
             raise HTTPException(status_code=400, detail="Uno o più siti selezionati non sono consentiti.")
         if not requested_sites:
             raise HTTPException(status_code=400, detail="Seleziona almeno un sito per la ricerca.")
-        selected_sites = sorted(requested_sites)
+        selected_sites = requested_sites
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(6.0, connect=3.0),
             follow_redirects=True,
             headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html,application/json"},
         ) as client:
-            batches = await __import__("asyncio").gather(
-                *(_search_one_site(client, site, q) for site in selected_sites),
-                return_exceptions=True,
-            )
+            # Interroga le fonti in sequenza, rispettando l'ordine scelto dall'utente.
+            batches = []
+            for site in selected_sites:
+                try:
+                    batches.append(await _search_one_site(client, site, q))
+                except Exception:
+                    batches.append([])
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Non riesco a contattare i siti di ricette. Riprova più tardi.") from exc
 
