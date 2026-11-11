@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from urllib.parse import urlparse
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -18,8 +19,49 @@ ALLOWED_SITES = {
     "fattoincasadabenedetta.it",
     "ricettedellanonna.net",
 }
-BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
-USER_AGENT = "RecipeFinder/0.1 (recipe search; respects publisher access controls)"
+DUCKDUCKGO_ENDPOINT = "https://html.duckduckgo.com/html/"
+USER_AGENT = "Mozilla/5.0 (compatible; RecipeFinder/0.1; recipe search)"
+RECIPE_USER_AGENT = "RecipeFinder/0.1 (recipe search; respects publisher access controls)"
+
+
+class DuckDuckGoResultsParser(HTMLParser):
+    """Extract ordinary web results from DuckDuckGo's HTML results page."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.results = []
+        self._current = None
+        self._capture = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        classes = attrs.get("class", "").split()
+
+        if tag == "a" and "result__a" in classes:
+            self._current = {
+                "title": "",
+                "url": attrs.get("href", ""),
+                "description": "",
+            }
+            self._capture = "title"
+        elif self._current is not None and "result__snippet" in classes:
+            self._capture = "description"
+
+    def handle_data(self, data):
+        if self._current is not None and self._capture:
+            self._current[self._capture] += data
+
+    def handle_endtag(self, tag):
+        if self._current is None:
+            return
+        if tag == "a" and self._capture == "title":
+            self._capture = None
+            url = self._current["url"]
+            if url:
+                self.results.append(self._current)
+                self._current = None
+        elif self._capture == "description" and tag in ("td", "div"):
+            self._capture = None
 
 
 def allowed_host(url: str) -> str | None:
@@ -31,6 +73,16 @@ def allowed_host(url: str) -> str | None:
         return host
     except ValueError:
         return None
+
+
+def direct_result_url(url: str) -> str:
+    """Unwrap DuckDuckGo redirect links without following arbitrary redirects."""
+    parsed = urlparse(url)
+    if parsed.hostname and parsed.hostname.endswith("duckduckgo.com"):
+        target = parse_qs(parsed.query).get("uddg", [None])[0]
+        if target:
+            return target
+    return url
 
 
 def recipe_to_dict(scraper) -> dict:
@@ -72,41 +124,46 @@ async def sites():
 
 
 @app.get("/api/search")
-async def search(request: Request, q: str = Query(min_length=2, max_length=100)):
-    env = request.scope["env"]
-    api_key = getattr(env, "BRAVE_SEARCH_API_KEY", None) or os.environ.get("BRAVE_SEARCH_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="Ricerca non configurata: aggiungi BRAVE_SEARCH_API_KEY ai secrets del Worker.",
-        )
-
+async def search(q: str = Query(min_length=2, max_length=100)):
     site_filter = " OR ".join("site:" + site for site in sorted(ALLOWED_SITES))
-    params = {"q": q + " (" + site_filter + ")", "count": "15", "search_lang": "it"}
-    headers = {"Accept": "application/json", "X-Subscription-Token": api_key}
+    search_query = q + " (" + site_filter + ")"
+    params = {"q": search_query, "kl": "it-it"}
 
     try:
-        async with httpx.AsyncClient(timeout=12.0, follow_redirects=False) as client:
-            response = await client.get(BRAVE_ENDPOINT, params=params, headers=headers)
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=False,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml",
+            },
+        ) as client:
+            response = await client.get(DUCKDUCKGO_ENDPOINT, params=params)
             response.raise_for_status()
-            payload = response.json()
+            parser = DuckDuckGoResultsParser()
+            parser.feed(response.text)
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=502, detail="Il servizio di ricerca non ha accettato la richiesta.") from exc
+        raise HTTPException(status_code=502, detail="DuckDuckGo non ha accettato la richiesta. Riprova più tardi.") from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Servizio di ricerca temporaneamente non disponibile.") from exc
+        raise HTTPException(status_code=502, detail="Ricerca temporaneamente non disponibile. Riprova più tardi.") from exc
 
     results = []
-    for item in payload.get("web", {}).get("results", []):
-        url = item.get("url", "")
+    seen = set()
+    for item in parser.results:
+        url = direct_result_url(item["url"])
         host = allowed_host(url)
-        if host:
+        if host and url not in seen:
+            seen.add(url)
             results.append({
-                "title": item.get("title") or "Ricetta",
+                "title": " ".join(item["title"].split()) or "Ricetta",
                 "url": url,
-                "description": item.get("description") or "",
+                "description": " ".join(item["description"].split()),
                 "source": host,
                 "image": None,
             })
+        if len(results) >= 15:
+            break
+
     return {"query": q, "results": results}
 
 
@@ -120,7 +177,7 @@ async def recipe(url: str = Query(min_length=12, max_length=2000)):
         async with httpx.AsyncClient(
             timeout=12.0,
             follow_redirects=False,
-            headers={"User-Agent": USER_AGENT, "Accept": "text/html"},
+            headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html"},
         ) as client:
             response = await client.get(url)
             response.raise_for_status()
