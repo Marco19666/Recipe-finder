@@ -125,53 +125,39 @@ const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, char
 async function loadDailyRecipe() {
   const dailyGrid = document.querySelector("#daily-recipe");
   if (!dailyGrid) return;
-  const dailyQueries = [
-    "pasta al forno", "pollo al limone", "risotto ai funghi", "parmigiana di melanzane",
-    "polpette al sugo", "torta di mele", "lasagne", "pasta alla carbonara",
-    "frittata di verdure", "tiramisù", "salmone al forno", "gnocchi al pomodoro",
-    "crostata", "spezzatino", "pasta al pesto"
-  ];
+  const dailyQueries = ["pasta al forno","pollo al limone","risotto ai funghi","parmigiana di melanzane","polpette al sugo","torta di mele","lasagne","pasta alla carbonara","frittata di verdure","tiramisù","salmone al forno","gnocchi al pomodoro","crostata","spezzatino","pasta al pesto"];
   const now = new Date();
-  const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-  const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
-  const dailySites = [
-    "misya.info", "cookist.it", "cucchiaio.it",
-    "fattoincasadabenedetta.it", "ricettedellanonna.net", "tavolartegusto.it"
-  ];
+  const dayNumber = Math.floor(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000);
+  const query = dailyQueries[((dayNumber%dailyQueries.length)+dailyQueries.length)%dailyQueries.length];
+  const dailySites = ["misya.info","cookist.it","cucchiaio.it","fattoincasadabenedetta.it","ricettedellanonna.net","tavolartegusto.it"];
   const savedChoiceKey = "recipe-finder-daily-site-v1";
-  let dailySite = "";
+  let primarySite = "";
   try {
-    const savedChoice = JSON.parse(localStorage.getItem(savedChoiceKey) || "null");
-    if (savedChoice && savedChoice.day === dayNumber && dailySites.includes(savedChoice.site)) {
-      dailySite = savedChoice.site;
-    }
+    const savedChoice = JSON.parse(localStorage.getItem(savedChoiceKey)||"null");
+    if(savedChoice&&savedChoice.day===dayNumber&&dailySites.includes(savedChoice.site)) primarySite=savedChoice.site;
   } catch {}
-  if (!dailySite) {
-    dailySite = dailySites[Math.floor(Math.random() * dailySites.length)];
-    try { localStorage.setItem(savedChoiceKey, JSON.stringify({ day: dayNumber, site: dailySite })); } catch {}
+  if(!primarySite){
+    primarySite=dailySites[Math.floor(Math.random()*dailySites.length)];
+    try{localStorage.setItem(savedChoiceKey,JSON.stringify({day:dayNumber,site:primarySite}));}catch{}
   }
-  try {
-    const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(dailySite) + "&_=" + Date.now(), { cache: "no-store" });
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) throw new Error("Risposta non valida");
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile");
-    const item = (payload.results || []).find(result => result && result.title && result.url);
-    if (!item) throw new Error("Nessuna ricetta trovata");
-    const image = item.image
-      ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager" referrerpolicy="no-referrer">'
-      : '<div class="result-placeholder" aria-hidden="true">✳</div>';
-    const description = esc((item.description || "Scopri ingredienti e preparazione di questa ricetta.") .slice(0, 180));
-    dailyGrid.innerHTML = '<article class="result-card daily-recipe-card">' + image +
-      '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span>' +
-      '<h3>' + esc(item.title) + '</h3><p>' + description + '</p>' +
-      '<div class="card-actions"><button class="recipe-button" id="daily-recipe-open" type="button">Scopri la ricetta</button></div></div></article>';
-    document.querySelector("#daily-recipe-open").addEventListener("click", () => loadRecipe(item.url, item));
-  } catch {
-    dailyGrid.innerHTML = '<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
+  // Mantiene il sito casuale come prima scelta e passa alle altre fonti solo se necessario.
+  for(const site of [primarySite,...dailySites.filter(value=>value!==primarySite)]){
+    try{
+      const response=await fetch("/api/search?q="+encodeURIComponent(query)+"&sites="+encodeURIComponent(site)+"&_="+Date.now(),{cache:"no-store"});
+      if(!(response.headers.get("content-type")||"").includes("application/json")) continue;
+      const payload=await response.json();
+      if(!response.ok) continue;
+      const item=(payload.results||[]).find(result=>result&&result.title&&result.url);
+      if(!item) continue;
+      const image=item.image?'<img class="result-image" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" loading="eager" referrerpolicy="no-referrer">':'<div class="result-placeholder" aria-hidden="true">✳</div>';
+      const description=esc((item.description||"Scopri ingredienti e preparazione di questa ricetta.").slice(0,180));
+      dailyGrid.innerHTML='<article class="result-card daily-recipe-card">'+image+'<div class="result-body"><span class="result-source">'+esc(item.source||"Ricetta selezionata")+'</span><h3>'+esc(item.title)+'</h3><p>'+description+'</p><div class="card-actions"><button class="recipe-button" id="daily-recipe-open" type="button">Scopri la ricetta</button></div></div></article>';
+      document.querySelector("#daily-recipe-open").addEventListener("click",()=>loadRecipe(item.url,item));
+      return;
+    }catch{}
   }
+  dailyGrid.innerHTML='<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
 }
-
 
 function notify(message, duration = 3200) {
   toast.textContent = message;
@@ -411,3 +397,22 @@ document.addEventListener("keydown", event => {
 
 
 loadDailyRecipe();
+
+let deferredInstallPrompt=null;
+const installButton=document.querySelector("#install-app");
+if(installButton){
+  window.addEventListener("beforeinstallprompt",event=>{
+    event.preventDefault();deferredInstallPrompt=event;installButton.hidden=false;
+  });
+  window.addEventListener("appinstalled",()=>{
+    deferredInstallPrompt=null;installButton.hidden=true;notify("Cosa Cucino? è stata installata.");
+  });
+  installButton.addEventListener("click",async()=>{
+    if(!deferredInstallPrompt){
+      notify("Per installarla su Android: apri il menu ⋮ di Chrome e scegli “Installa app” oppure “Aggiungi a schermata Home”.",6500);
+      return;
+    }
+    deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;
+  });
+}
+if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
