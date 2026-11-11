@@ -33,17 +33,6 @@
         <input id="query" type="search" placeholder="Es. pasta al pesto, torta di mele..." autocomplete="off" minlength="2" required>
         <button type="submit">Cerca ricette <span aria-hidden="true">↗</span></button>
       </form>
-      <div class="budget-box">
-        <div><strong>Quanto vuoi spendere?</strong><p>Trova idee in base al tuo budget indicativo.</p></div>
-        <label for="budget-query">Che cosa vorresti cucinare? (facoltativo)</label>
-        <input id="budget-query" type="text" placeholder="Es. pasta, pollo, verdure...">
-        <div class="budget-fields">
-          <label>Budget a persona<select id="budget-limit"><option value="1">Fino a 1 €</option><option value="2" selected>Fino a 2 €</option><option value="3">Fino a 3 €</option><option value="5">Fino a 5 €</option></select></label>
-          <label>Persone<select id="budget-people"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
-        </div>
-        <button id="budget-search" class="recipe-button" type="button">Trova ricette economiche</button>
-        <small>I costi reali variano in base a quantità, marca e negozio: il budget è un'indicazione per orientare la ricerca, non un prezzo garantito.</small>
-      </div>
       <fieldset class="site-chooser">
         <legend>Cerca su questi siti</legend>
         <label class="site-option site-all"><input id="sites-all" type="checkbox" checked> Tutti i siti</label>
@@ -112,6 +101,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>Cosa Cucino?</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=23" defer></script>
+  <script src="/app.js?v=24" defer></script>
 </body>
 </html>
