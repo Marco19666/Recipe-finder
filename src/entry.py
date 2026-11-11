@@ -430,7 +430,7 @@ async def search(
         selected_sites = sorted(ALLOWED_SITES)
     else:
         requested_sites = list(dict.fromkeys(site.strip().lower() for site in sites.split(",") if site.strip()))
-        unknown_sites = requested_sites - ALLOWED_SITES
+        unknown_sites = set(requested_sites) - ALLOWED_SITES
         if unknown_sites:
             raise HTTPException(status_code=400, detail="Uno o più siti selezionati non sono consentiti.")
         if not requested_sites:
