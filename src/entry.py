@@ -281,6 +281,22 @@ def _looks_like_recipe_url(url: str) -> bool:
     return any(part in path for part in ("/ricetta/", "/recipe/", "/ricette-", "/ricetta-")) or path.count("/") >= 2
 
 
+def _matches_query(title: str, description: str, query: str) -> bool:
+    """Require a meaningful share of the search terms in the title or description."""
+    import math
+    stopwords = {"con", "per", "alla", "alle", "agli", "della", "delle", "degli",
+                 "del", "dei", "di", "da", "in", "il", "lo", "la", "le", "gli",
+                 "un", "una", "uno", "e"}
+    terms = [term.casefold() for term in query.split()
+             if len(term) > 2 and term.casefold() not in stopwords]
+    if not terms:
+        return True
+    haystack = (title + " " + description).casefold()
+    matched = sum(1 for term in terms if term in haystack)
+    required = max(1, math.ceil(len(terms) * 0.6))
+    return matched >= required
+
+
 async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> list[dict]:
     base = "https://" + site
     # Try the publisher's public WordPress search API first; no third-party search engine.
@@ -296,8 +312,11 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
                 if isinstance(title, dict):
                     title = title.get("rendered", "")
                 if allowed_host(url) and _looks_like_recipe_url(url) and title:
-                    found.append({"title": " ".join(str(title).split()), "url": url,
-                                  "description": "", "source": site, "image": None})
+                    clean_title = " ".join(str(title).split())
+                    description = str(item.get("excerpt", "") or "")
+                    if _matches_query(clean_title, description, query):
+                        found.append({"title": clean_title, "url": url,
+                                      "description": description, "source": site, "image": None})
             if found:
                 return found[:8]
     except Exception:
@@ -318,7 +337,7 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
             if (not title or url in seen or not allowed_host(url)
                     or not _looks_like_recipe_url(url)):
                 continue
-            if terms and not any(term in title.casefold() for term in terms):
+            if not _matches_query(title, "", query):
                 continue
             seen.add(url)
             found.append({"title": title, "url": url, "description": "",
