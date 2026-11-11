@@ -32,7 +32,7 @@ siteCheckboxes.forEach(input => input.addEventListener("change", () => { allSite
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
-  resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
+  resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true; document.querySelector("#history-section").hidden = true;
   personalSection.hidden = false;
   document.querySelector('#personal-form').hidden = true;
   document.querySelector('#personal-add').hidden = false;
@@ -97,7 +97,7 @@ function toggleFavorite(item) {
   saveFavorites(exists ? items.filter(saved => saved.url !== item.url) : [item, ...items]);
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
-function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; document.querySelector("#history-section").hidden = true; favoritesSection.hidden = false; renderFavorites(); }
 function renderFavoriteReview(item, index) {
   const rating = Math.max(0, Math.min(5, Number(item.rating) || 0));
   const stars = [1,2,3,4,5].map(value =>
@@ -230,6 +230,7 @@ async function searchRecipes(query) {
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
   setLoading(true);
   welcome.hidden = true;
+  document.querySelector("#history-section").hidden = true;
   favoritesSection.hidden = true;
   personalSection.hidden = true;
   shoppingSection.hidden = true;
@@ -408,6 +409,7 @@ function renderShoppingList() {
 }
 function showShopping() {
   resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; welcomeSection.hidden = true;
+  document.querySelector("#history-section").hidden = true;
   shoppingSection.hidden = false; renderShoppingList();
 }
 shoppingCount.textContent = getShoppingItems().length;
