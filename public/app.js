@@ -20,6 +20,7 @@ const personalCount = document.querySelector("#personal-count");
 const PERSONAL_KEY = "recipe-finder-personal-recipes-v1";
 const FAVORITES_KEY = "recipe-finder-favorites-v1";
 const SHOPPING_KEY = "recipe-finder-shopping-list-v1";
+const HISTORY_KEY = "recipe-finder-search-history-v1";
 const shoppingSection = document.querySelector("#shopping-section");
 const shoppingList = document.querySelector("#shopping-list");
 const shoppingCount = document.querySelector("#shopping-count");
@@ -97,6 +98,17 @@ function toggleFavorite(item) {
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
 function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function renderFavoriteReview(item, index) {
+  const rating = Math.max(0, Math.min(5, Number(item.rating) || 0));
+  const stars = [1,2,3,4,5].map(value =>
+    '<button type="button" class="review-star' + (value <= rating ? ' is-active' : '') + '" data-review-star="' + value + '" data-review-index="' + index + '" aria-label="' + value + ' stelle">★</button>'
+  ).join("");
+  return '<div class="favorite-review"><div class="review-stars" aria-label="Valutazione personale">' + stars + '</div><label for="favorite-note-' + index + '">La tua nota</label><textarea id="favorite-note-' + index + '" data-review-note="' + index + '" rows="2" maxlength="500" placeholder="Scrivi un appunto su questa ricetta...">' + esc(item.note || "") + '</textarea><button type="button" class="recipe-button review-save" data-review-save="' + index + '">Salva nota</button></div>';
+}
+function updateFavoriteReview(url, changes) {
+  saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...changes } : item));
+}
+
 function renderFavorites() {
   const all = getFavorites();
   const term = (document.querySelector("#favorites-search").value || "").trim().toLocaleLowerCase("it");
@@ -105,13 +117,25 @@ function renderFavorites() {
     (!term || (item.title + " " + (item.source || "")).toLocaleLowerCase("it").includes(term)));
   favoritesGrid.innerHTML = items.length ? items.map((item, index) => {
     const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder"></div>';
-    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><label class="favorite-category-label">Categoria <select class="favorite-category" data-favorite-category="' + index + '"><option' + ((item.category || "Altro") === "Primo" ? " selected" : "") + '>Primo</option><option' + (item.category === "Secondo" ? " selected" : "") + '>Secondo</option><option' + (item.category === "Contorno" ? " selected" : "") + '>Contorno</option><option' + (item.category === "Antipasto" ? " selected" : "") + '>Antipasto</option><option' + (item.category === "Dolce" ? " selected" : "") + '>Dolce</option><option' + ((item.category || "Altro") === "Altro" ? " selected" : "") + '>Altro</option></select></label><div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div>' + (item.ingredients && item.ingredients.length ? '<button class="shopping-add" data-favorite-shopping="' + index + '" type="button">＋ Ingredienti nella lista</button>' : '') + '</div></article>';
+    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><label class="favorite-category-label">Categoria <select class="favorite-category" data-favorite-category="' + index + '"><option' + ((item.category || "Altro") === "Primo" ? " selected" : "") + '>Primo</option><option' + (item.category === "Secondo" ? " selected" : "") + '>Secondo</option><option' + (item.category === "Contorno" ? " selected" : "") + '>Contorno</option><option' + (item.category === "Antipasto" ? " selected" : "") + '>Antipasto</option><option' + (item.category === "Dolce" ? " selected" : "") + '>Dolce</option><option' + ((item.category || "Altro") === "Altro" ? " selected" : "") + '>Altro</option></select></label>' + renderFavoriteReview(item, index) + '<div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div>' + (item.ingredients && item.ingredients.length ? '<button class="shopping-add" data-favorite-shopping="' + index + '" type="button">＋ Ingredienti nella lista</button>' : '') + '</div></article>';
   }).join("") : '<div class="empty-state">' + (all.length ? "Nessuna ricetta corrisponde alla ricerca o categoria scelta." : "Non hai ancora salvato ricette. Apri una ricetta e premi “Ricetta preferita”.") + '</div>';
   favoritesGrid.querySelectorAll("[data-favorite-open]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteOpen)]; loadRecipe(item.url, item); }));
   favoritesGrid.querySelectorAll("[data-favorite-remove]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteRemove)]; saveFavorites(getFavorites().filter(saved => saved.url !== item.url)); renderFavorites(); }));
   favoritesGrid.querySelectorAll("[data-favorite-category]").forEach(select => select.addEventListener("change", () => {
     const item = items[Number(select.dataset.favoriteCategory)];
     saveFavorites(getFavorites().map(saved => saved.url === item.url ? { ...saved, category: select.value } : saved));
+    renderFavorites();
+  }));
+  favoritesGrid.querySelectorAll("[data-review-star]").forEach(button => button.addEventListener("click", () => {
+    const item = items[Number(button.dataset.reviewIndex)];
+    updateFavoriteReview(item.url, { rating: Number(button.dataset.reviewStar) });
+    renderFavorites();
+  }));
+  favoritesGrid.querySelectorAll("[data-review-save]").forEach(button => button.addEventListener("click", () => {
+    const item = items[Number(button.dataset.reviewSave)];
+    const note = favoritesGrid.querySelector('[data-review-note="' + button.dataset.reviewSave + '"]').value.trim();
+    updateFavoriteReview(item.url, { note });
+    notify("Nota personale salvata.");
     renderFavorites();
   }));
   favoritesGrid.querySelectorAll("[data-favorite-shopping]").forEach(button => button.addEventListener("click", () => addShoppingIngredients(items[Number(button.dataset.favoriteShopping)].ingredients)));
@@ -172,8 +196,36 @@ function setLoading(loading) {
   button.innerHTML = loading ? "Cerco..." : 'Cerca ricette <span aria-hidden="true">↗</span>';
 }
 
+function getSearchHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; } }
+function saveSearchHistory(query) {
+  const normalized = String(query || "").trim();
+  if (!normalized) return;
+  const items = getSearchHistory().filter(item => item.query.toLocaleLowerCase("it") !== normalized.toLocaleLowerCase("it"));
+  items.unshift({ query: normalized, date: Date.now() });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 10)));
+}
+function renderSearchHistory() {
+  const grid = document.querySelector("#history-list");
+  const items = getSearchHistory();
+  grid.innerHTML = items.length ? items.map((item, index) =>
+    '<div class="history-item"><button type="button" class="history-query" data-history-run="' + index + '">' + esc(item.query) + '</button><button type="button" class="favorite-remove" data-history-delete="' + index + '" aria-label="Elimina ricerca">Elimina</button></div>'
+  ).join("") : '<div class="empty-state">Non hai ancora effettuato ricerche.</div>';
+  grid.querySelectorAll("[data-history-run]").forEach(button => button.addEventListener("click", () => searchRecipes(items[Number(button.dataset.historyRun)].query)));
+  grid.querySelectorAll("[data-history-delete]").forEach(button => button.addEventListener("click", () => {
+    const selected = items[Number(button.dataset.historyDelete)];
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(getSearchHistory().filter(item => item.query !== selected.query)));
+    renderSearchHistory();
+  }));
+}
+function showHistory() {
+  resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
+  document.querySelector("#history-section").hidden = false;
+  renderSearchHistory();
+}
+
 async function searchRecipes(query) {
   queryInput.value = query;
+  saveSearchHistory(query);
   const selectedSites = getSelectedSites();
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
   setLoading(true);
@@ -360,6 +412,16 @@ function showShopping() {
 }
 shoppingCount.textContent = getShoppingItems().length;
 document.querySelector("#show-shopping").addEventListener("click", showShopping);
+document.querySelector("#show-history").addEventListener("click", showHistory);
+document.querySelector("#history-back").addEventListener("click", () => { document.querySelector("#history-section").hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#history-clear").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderSearchHistory(); notify("Cronologia cancellata."); });
+document.querySelector("#budget-search").addEventListener("click", () => {
+  const ingredient = document.querySelector("#budget-query").value.trim();
+  const budget = document.querySelector("#budget-limit").value;
+  const people = document.querySelector("#budget-people").value;
+  const query = (ingredient ? ingredient + " " : "") + "ricette economiche fino a " + budget + " euro a persona per " + people + " persone";
+  searchRecipes(query);
+});
 document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; });
 document.querySelector("#shopping-clear").addEventListener("click", () => {
   saveShoppingItems([]); renderShoppingList(); notify("Lista della spesa svuotata.");
