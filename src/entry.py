@@ -515,7 +515,7 @@ async def search(
         item.pop("_relevance", None)
         results.append(item)
         site_counts[site] = site_counts.get(site, 0) + 1
-        if len(results) >= 10:
+        if len(results) >= 12:
             break
 
     # Enrich every returned card, with bounded concurrency.
