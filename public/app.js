@@ -13,7 +13,38 @@ const favoritesGrid = document.querySelector("#favorites-grid");
 const favoritesButton = document.querySelector("#show-favorites");
 const favoritesCount = document.querySelector("#favorites-count");
 const welcomeSection = document.querySelector("#welcome");
+const personalSection = document.querySelector("#personal-section");
+const personalGrid = document.querySelector("#personal-grid");
+const personalButton = document.querySelector("#show-personal");
+const personalCount = document.querySelector("#personal-count");
+const PERSONAL_KEY = "recipe-finder-personal-recipes-v1";
 const FAVORITES_KEY = "recipe-finder-favorites-v1";
+function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
+function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
+function showPersonal() {
+  resultsSection.hidden = true; favoritesSection.hidden = true; welcomeSection.hidden = true;
+  personalSection.hidden = false; renderPersonalRecipes();
+}
+function renderPersonalRecipes() {
+  const items = getPersonalRecipes();
+  personalGrid.innerHTML = items.length ? items.map((item, index) =>
+    '<article class="result-card"><div class="result-placeholder" aria-hidden="true">✳</div><div class="result-body"><span class="result-source">Ricetta personale</span><h3>' + esc(item.title) + '</h3><div class="card-actions"><button class="recipe-button" data-personal-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-personal-delete="' + index + '">Elimina</button></div></div></article>'
+  ).join("") : '<div class="empty-state">Non hai ancora aggiunto ricette personali. Usa il modulo qui sopra.</div>';
+  personalGrid.querySelectorAll("[data-personal-open]").forEach(button => button.addEventListener("click", () => showPersonalRecipe(items[Number(button.dataset.personalOpen)])));
+  personalGrid.querySelectorAll("[data-personal-delete]").forEach(button => button.addEventListener("click", () => {
+    const item = items[Number(button.dataset.personalDelete)];
+    savePersonalRecipes(getPersonalRecipes().filter(saved => saved.id !== item.id)); renderPersonalRecipes();
+    notify("Ricetta personale eliminata.");
+  }));
+}
+function showPersonalRecipe(item) {
+  modal.hidden = false; document.body.style.overflow = "hidden";
+  const ingredients = item.ingredients.map(value => "<li>" + esc(value) + "</li>").join("");
+  const steps = item.steps.map(value => "<li>" + esc(value) + "</li>").join("");
+  recipeContent.innerHTML = '<span class="result-source">Ricetta personale</span><h2 id="recipe-title">' + esc(item.title) + '</h2>' +
+    (item.time ? '<div class="recipe-meta">Tempo di preparazione: ' + esc(item.time) + ' min</div>' : '') +
+    '<h3>Ingredienti</h3><ul>' + ingredients + '</ul><h3>Preparazione</h3><ol>' + steps + '</ol>';
+}
 function getFavorites() { try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]"); } catch { return []; } }
 function saveFavorites(items) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(items)); updateFavoritesCount(); }
 function updateFavoritesCount() { const count = getFavorites().length; favoritesCount.textContent = count; favoritesButton.setAttribute("aria-label", "Ricette preferite: " + count); }
@@ -23,7 +54,7 @@ function toggleFavorite(item) {
   saveFavorites(exists ? items.filter(saved => saved.url !== item.url) : [item, ...items]);
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
-function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
 function renderFavorites() {
   const items = getFavorites();
   favoritesGrid.innerHTML = items.length ? items.map((item, index) => {
@@ -55,6 +86,7 @@ async function searchRecipes(query) {
   setLoading(true);
   welcome.hidden = true;
   favoritesSection.hidden = true;
+  personalSection.hidden = true;
   resultsSection.hidden = false;
   resultsTitle.textContent = "Ricette: " + query;
   resultCount.textContent = "Ricerca in corso";
@@ -129,6 +161,21 @@ async function loadRecipe(url, fallback = {}) {
   }
 }
 
+personalCount.textContent = getPersonalRecipes().length;
+personalButton.addEventListener("click", showPersonal);
+document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#personal-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const title = document.querySelector("#personal-title").value.trim();
+  const ingredients = document.querySelector("#personal-ingredients").value.split("\n").map(x => x.trim()).filter(Boolean);
+  const steps = document.querySelector("#personal-steps").value.split("\n").map(x => x.trim()).filter(Boolean);
+  const time = document.querySelector("#personal-time").value.trim();
+  if (!title || !ingredients.length || !steps.length) { notify("Compila nome, ingredienti e preparazione."); return; }
+  const items = getPersonalRecipes();
+  items.unshift({ id: String(Date.now()), title, ingredients, steps, time });
+  savePersonalRecipes(items);
+  event.target.reset(); renderPersonalRecipes(); notify("Ricetta personale salvata.");
+});
 favoritesButton.addEventListener("click", showFavorites);
 document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; });
 form.addEventListener("submit", event => {
