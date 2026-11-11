@@ -23,7 +23,10 @@ function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PER
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
   resultsSection.hidden = true; favoritesSection.hidden = true; welcomeSection.hidden = true;
-  personalSection.hidden = false; renderPersonalRecipes();
+  personalSection.hidden = false;
+  document.querySelector('#personal-form').hidden = true;
+  document.querySelector('#personal-add').hidden = false;
+  renderPersonalRecipes();
 }
 function imageToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -52,7 +55,7 @@ function renderPersonalRecipes() {
   const items = getPersonalRecipes();
   personalGrid.innerHTML = items.length ? items.map((item, index) =>
     '<article class="result-card">' + (item.photo ? '<img class="result-image" src="' + item.photo + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder" aria-hidden="true">✳</div>') + '<div class="result-body"><span class="result-source">Ricetta personale</span><h3>' + esc(item.title) + '</h3><div class="card-actions"><button class="recipe-button" data-personal-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-personal-delete="' + index + '">Elimina</button></div></div></article>'
-  ).join("") : '<div class="empty-state">Non hai ancora aggiunto ricette personali. Usa il modulo qui sopra.</div>';
+  ).join("") : '<div class="empty-state">Non hai ancora aggiunto ricette personali. Premi “Aggiungi ricetta” per iniziare.</div>';
   personalGrid.querySelectorAll("[data-personal-open]").forEach(button => button.addEventListener("click", () => showPersonalRecipe(items[Number(button.dataset.personalOpen)])));
   personalGrid.querySelectorAll("[data-personal-delete]").forEach(button => button.addEventListener("click", () => {
     const item = items[Number(button.dataset.personalDelete)];
@@ -187,6 +190,11 @@ async function loadRecipe(url, fallback = {}) {
 
 personalCount.textContent = getPersonalRecipes().length;
 personalButton.addEventListener("click", showPersonal);
+document.querySelector('#personal-add').addEventListener('click', () => {
+  document.querySelector('#personal-form').hidden = false;
+  document.querySelector('#personal-add').hidden = true;
+  document.querySelector('#personal-title').focus();
+});
 document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; });
 document.querySelector("#personal-form").addEventListener("submit", async event => {
   event.preventDefault();
@@ -201,7 +209,11 @@ document.querySelector("#personal-form").addEventListener("submit", async event 
     const items = getPersonalRecipes();
     items.unshift({ id: String(Date.now()), title, ingredients, steps, time, photo });
     savePersonalRecipes(items);
-    event.target.reset(); renderPersonalRecipes(); notify("Ricetta personale salvata.");
+    event.target.reset();
+    event.target.hidden = true;
+    document.querySelector("#personal-add").hidden = false;
+    renderPersonalRecipes();
+    notify("Ricetta personale salvata.");
   } catch (error) { notify(error.message || "Non riesco a salvare la foto."); }
 });
 favoritesButton.addEventListener("click", showFavorites);
