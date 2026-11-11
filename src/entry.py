@@ -398,7 +398,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
     """Search each approved publisher directly, without DuckDuckGo or paid APIs."""
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(12.0, connect=6.0),
+            timeout=httpx.Timeout(6.0, connect=3.0),
             follow_redirects=True,
             headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html,application/json"},
         ) as client:
@@ -441,11 +441,11 @@ async def search(q: str = Query(min_length=2, max_length=100)):
 
     # Enrich every returned card, with bounded concurrency.
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(5.0, connect=3.0),
+        timeout=httpx.Timeout(4.0, connect=2.0),
         follow_redirects=True,
         headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html"},
     ) as image_client:
-        semaphore = asyncio.Semaphore(2)
+        semaphore = asyncio.Semaphore(5)
 
         async def enrich(item):
             async with semaphore:
