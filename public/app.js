@@ -134,8 +134,24 @@ async function loadDailyRecipe() {
   const now = new Date();
   const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
+  const dailySites = [
+    "misya.info", "cookist.it", "cucchiaio.it",
+    "fattoincasadabenedetta.it", "ricettedellanonna.net", "tavolartegusto.it"
+  ];
+  const savedChoiceKey = "recipe-finder-daily-site-v1";
+  let dailySite = "";
   try {
-    const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(getSelectedSites().join(",")) + "&_=" + Date.now(), { cache: "no-store" });
+    const savedChoice = JSON.parse(localStorage.getItem(savedChoiceKey) || "null");
+    if (savedChoice && savedChoice.day === dayNumber && dailySites.includes(savedChoice.site)) {
+      dailySite = savedChoice.site;
+    }
+  } catch {}
+  if (!dailySite) {
+    dailySite = dailySites[Math.floor(Math.random() * dailySites.length)];
+    try { localStorage.setItem(savedChoiceKey, JSON.stringify({ day: dayNumber, site: dailySite })); } catch {}
+  }
+  try {
+    const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(dailySite) + "&_=" + Date.now(), { cache: "no-store" });
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) throw new Error("Risposta non valida");
     const payload = await response.json();
