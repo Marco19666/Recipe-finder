@@ -150,3 +150,19 @@ footer span:first-child{font-family:"Playfair Display",Georgia,serif;font-size:1
 
 /* Installazione come app su Android */
 .top-actions{display:flex;align-items:center;gap:14px}.install-app-button{border:1px solid var(--green);background:var(--green);color:#fff;border-radius:8px;padding:9px 13px;font:600 12px "DM Sans";cursor:pointer}.install-app-button:hover{background:var(--green-dark)}.install-app-button[hidden]{display:none!important}@media(max-width:520px){.top-actions{gap:0}.install-app-button{padding:9px 11px;font-size:11px}}
+
+
+/* Ricerca sequenziale con avanzamento reale */
+.search-progress{margin:0 0 22px;padding:16px 18px;background:#fff;border:1px solid #dfe4d9;border-radius:14px;box-shadow:0 5px 18px rgba(42,48,37,.045)}
+.search-progress[hidden]{display:none!important}
+.search-progress-top{display:flex;align-items:center;gap:13px}
+.search-progress-copy{min-width:0;flex:1}
+.search-progress-copy strong{display:block;color:var(--green-dark);font-size:14px}
+.search-progress-copy p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.search-spinner{width:25px;height:25px;flex:0 0 25px;border:3px solid #e3e9df;border-top-color:var(--green);border-radius:50%;animation:recipe-search-spin .8s linear infinite}
+.search-progress.is-done .search-spinner{animation:none;border-color:var(--green);position:relative}
+.search-progress.is-done .search-spinner:after{content:"✓";position:absolute;inset:-2px;display:grid;place-items:center;color:var(--green);font-size:15px;font-weight:700}
+.progress-track{height:7px;margin-top:13px;overflow:hidden;background:#edf0e9;border-radius:10px}
+.progress-track>div{height:100%;width:0;background:linear-gradient(90deg,#72916e,#3f6245);border-radius:10px;transition:width .35s ease}
+@keyframes recipe-search-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.search-spinner{animation:none}.progress-track>div{transition:none}}
