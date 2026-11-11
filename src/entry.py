@@ -282,7 +282,7 @@ def _looks_like_recipe_url(url: str) -> bool:
 
 
 def _query_match_score(title: str, description: str, query: str) -> int:
-    """Score recipe relevance flexibly; reject clearly off-topic titles, not valid variants."""
+    """Rank recipe results by title relevance first, then description relevance."""
     import re
     import unicodedata
     from difflib import SequenceMatcher
@@ -316,22 +316,25 @@ def _query_match_score(title: str, description: str, query: str) -> int:
 
     title_hits = sum(has_match(term, title_words) for term in terms)
     description_hits = sum(has_match(term, description_words) for term in terms)
-    combined_hits = sum(has_match(term, title_words + description_words) for term in terms)
-
-    if len(terms) == 1:
-        if title_hits:
-            return 100
-        return 55 if description_hits else 0
-
-    # Prefer titles containing the whole dish, but allow a missing term in the
-    # description instead of discarding a potentially valid recipe.
-    if combined_hits < len(terms):
+    if not title_hits and not description_hits:
         return 0
+
+    # Exact phrase in the title is the strongest signal. A full set of
+    # query terms in the title outranks partial title matches and description-only matches.
+    normalized_title = " ".join(title_words)
+    normalized_query = " ".join(terms)
+    phrase_bonus = 12 if normalized_query and normalized_query in normalized_title else 0
+    title_ratio = title_hits / len(terms)
+    description_ratio = description_hits / len(terms)
+
+    # A recipe may still be relevant when its title is generic but its
+    # description contains the requested dish; rank it below title matches.
+    score = int(60 * title_ratio + 20 * description_ratio + phrase_bonus)
     if title_hits == len(terms):
-        return 100
-    if title_hits >= 1:
-        return 75 + int(20 * title_hits / len(terms))
-    return 0
+        score += 20
+    elif title_hits == 0:
+        score = min(score, 35)
+    return score
 
 
 def _matches_query(title: str, description: str, query: str) -> bool:
