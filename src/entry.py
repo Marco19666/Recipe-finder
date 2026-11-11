@@ -282,20 +282,50 @@ def _looks_like_recipe_url(url: str) -> bool:
 
 
 def _matches_query(title: str, description: str, query: str) -> bool:
-    """Require a meaningful share of the search terms in the title or description."""
-    import math
+    """Match recipe titles flexibly while rejecting clearly unrelated article titles."""
+    import re
+    import unicodedata
+    from difflib import SequenceMatcher
+
+    def normalize(value):
+        value = unicodedata.normalize("NFKD", value.casefold())
+        value = "".join(char for char in value if not unicodedata.combining(char))
+        return re.findall(r"[a-z0-9]+", value)
+
     stopwords = {"con", "per", "alla", "alle", "agli", "della", "delle", "degli",
                  "del", "dei", "di", "da", "in", "il", "lo", "la", "le", "gli",
-                 "un", "una", "uno", "e"}
-    terms = [term.casefold() for term in query.split()
-             if len(term) > 2 and term.casefold() not in stopwords]
+                 "un", "una", "uno", "e", "a"}
+    terms = [term for term in normalize(query) if len(term) > 2 and term not in stopwords]
     if not terms:
         return True
-    haystack = (title + " " + description).casefold()
-    matched = sum(1 for term in terms if term in haystack)
-    required = max(1, math.ceil(len(terms) * 0.6))
-    return matched >= required
 
+    title_words = normalize(title)
+    description_words = normalize(description)
+    if not title_words:
+        return False
+
+    off_topic = {"vino", "vini", "abbinare", "abbinamento", "abbinamenti",
+                 "quale", "quali", "consigli", "menu"}
+    if any(word in off_topic for word in title_words) and not any(word in terms for word in off_topic):
+        return False
+
+    def has_match(term, words):
+        for word in words:
+            if term == word or term in word or word in term:
+                return True
+            if min(len(term), len(word)) >= 5 and SequenceMatcher(None, term, word).ratio() >= 0.78:
+                return True
+        return False
+
+    title_matches = sum(has_match(term, title_words) for term in terms)
+    description_matches = sum(has_match(term, description_words) for term in terms)
+    if len(terms) == 1:
+        return title_matches == 1 or description_matches == 1
+    required_in_title = len(terms) if len(terms) <= 2 else max(2, len(terms) - 1)
+    return title_matches >= required_in_title or (
+        title_matches >= max(1, required_in_title - 1)
+        and title_matches + description_matches >= len(terms)
+    )
 
 async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> list[dict]:
     base = "https://" + site
@@ -313,7 +343,8 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
                     title = title.get("rendered", "")
                 if allowed_host(url) and _looks_like_recipe_url(url) and title:
                     clean_title = " ".join(str(title).split())
-                    description = str(item.get("excerpt", "") or "")
+                    excerpt = item.get("excerpt", "")
+                    description = excerpt.get("rendered", "") if isinstance(excerpt, dict) else str(excerpt or "")
                     if _matches_query(clean_title, description, query):
                         found.append({"title": clean_title, "url": url,
                                       "description": description, "source": site, "image": None})
@@ -378,9 +409,9 @@ async def search(q: str = Query(min_length=2, max_length=100)):
                 results.append(item)
                 site_count += 1
 
-    # Enrich only a few cards, with bounded concurrency.
+    # Enrich every returned card, with bounded concurrency.
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(6.0, connect=3.0),
+        timeout=httpx.Timeout(5.0, connect=3.0),
         follow_redirects=True,
         headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html"},
     ) as image_client:
@@ -390,7 +421,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
             async with semaphore:
                 return await _add_result_image(image_client, item)
 
-        await asyncio.gather(*(enrich(item) for item in results[:4]))
+        await asyncio.gather(*(enrich(item) for item in results))
 
     return {"query": q, "results": results}
 
