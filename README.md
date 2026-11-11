@@ -11,7 +11,7 @@ Applicazione web in italiano per cercare ricette su siti di cucina selezionati e
 - GitHub Actions per il deploy automatico a ogni push su main
 
 ## Fonti iniziali
-- GialloZafferano — giallozafferano.it
+- Misya — misya.info
 - Cookist — cookist.it
 - Cucchiaio d'Argento — cucchiaio.it
 - Fatto in casa da Benedetta — fattoincasadabenedetta.it
