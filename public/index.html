@@ -26,12 +26,17 @@
         <input id="query" type="search" placeholder="Es. pasta al pesto, torta di mele..." autocomplete="off" minlength="2" required>
         <button type="submit">Cerca ricette <span aria-hidden="true">↗</span></button>
       </form>
+      <div class="home-actions"><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button></div>
       <div class="popular"><span>PROVA:</span><button class="chip" data-query="pasta alla carbonara">Carbonara</button><button class="chip" data-query="torta di mele">Torta di mele</button><button class="chip" data-query="polpette al sugo">Polpette</button></div>
       <div class="source-line"><span class="source-dot"></span> Fonti selezionate: Misya, Cookist, Cucchiaio d'Argento e altri</div>
     </section>
     <section id="results-section" class="results-section" hidden>
       <div class="section-heading"><div><div class="eyebrow">LA SELEZIONE PER TE</div><h2 id="results-title">Risultati</h2></div><span id="result-count" class="result-count"></span></div>
       <div id="results" class="results-grid"></div>
+    </section>
+    <section id="favorites-section" class="results-section" hidden>
+      <div class="section-heading"><div><div class="eyebrow">LA TUA RACCOLTA</div><h2>Ricette preferite</h2></div><button id="back-home" class="back-home-button" type="button">Torna alla home</button></div>
+      <div id="favorites-grid" class="results-grid"></div>
     </section>
     <section id="welcome" class="welcome">
       <div class="welcome-icon">✳</div>
