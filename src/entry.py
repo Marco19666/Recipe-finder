@@ -214,9 +214,10 @@ async def sites():
 
 @app.get("/api/search")
 async def search(q: str = Query(min_length=2, max_length=100)):
-    # Search broadly, then enforce the source whitelist on parsed result URLs.
-    # DuckDuckGo can interpret long parenthesized site: OR filters inconsistently.
-    params = {"q": q, "kl": "it-it"}
+    # Search the approved recipe sites directly, as in the original working version.
+    site_filter = " OR ".join("site:" + site for site in sorted(ALLOWED_SITES))
+    search_query = q + " (" + site_filter + ")"
+    params = {"q": search_query, "kl": "it-it"}
 
     try:
         async with httpx.AsyncClient(
