@@ -26,3 +26,16 @@
 .recipe-photo{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;margin:16px 0 22px}
 
 .personal-form[hidden],#personal-add[hidden]{display:none!important}.personal-add-area{display:flex;justify-content:center;margin:28px 0 10px}.personal-add-area .recipe-button{padding:13px 22px;font-size:13px}
+
+.personal-form select,.personal-tools input,.personal-tools select{width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;padding:11px 12px;font:13px "DM Sans";color:var(--ink)}
+.personal-tools{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:0 0 20px}
+.shopping-add{margin-top:12px;width:100%;border:1px solid var(--green);border-radius:7px;background:#edf1e9;color:var(--green-dark);padding:10px;font:600 11px "DM Sans";cursor:pointer}
+.shopping-hint{color:var(--muted);font-size:13px;margin:-8px 0 18px}
+.shopping-list{max-width:760px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px}
+.shopping-item{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line);font-size:13px}
+.shopping-item:last-child{border-bottom:0}
+.shopping-item input{width:18px;height:18px;accent-color:var(--green)}
+.shopping-item span{flex:1}
+.shopping-item .checked{text-decoration:line-through;color:var(--muted)}
+.shopping-actions{max-width:760px;margin:15px auto;text-align:right}
+@media(max-width:520px){.personal-tools{grid-template-columns:1fr;gap:8px}}
