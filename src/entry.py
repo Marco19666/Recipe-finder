@@ -394,8 +394,21 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
 
 
 @app.get("/api/search")
-async def search(q: str = Query(min_length=2, max_length=100)):
-    """Search each approved publisher directly, without DuckDuckGo or paid APIs."""
+async def search(
+    q: str = Query(min_length=2, max_length=100),
+    sites: str | None = Query(default=None, max_length=300),
+):
+    """Search selected approved publishers directly, without paid search APIs."""
+    if sites is None:
+        selected_sites = sorted(ALLOWED_SITES)
+    else:
+        requested_sites = {site.strip().lower() for site in sites.split(",") if site.strip()}
+        unknown_sites = requested_sites - ALLOWED_SITES
+        if unknown_sites:
+            raise HTTPException(status_code=400, detail="Uno o più siti selezionati non sono consentiti.")
+        if not requested_sites:
+            raise HTTPException(status_code=400, detail="Seleziona almeno un sito per la ricerca.")
+        selected_sites = sorted(requested_sites)
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(6.0, connect=3.0),
@@ -403,7 +416,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
             headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html,application/json"},
         ) as client:
             batches = await __import__("asyncio").gather(
-                *(_search_one_site(client, site, q) for site in sorted(ALLOWED_SITES)),
+                *(_search_one_site(client, site, q) for site in selected_sites),
                 return_exceptions=True,
             )
     except Exception as exc:
@@ -453,7 +466,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
 
         await asyncio.gather(*(enrich(item) for item in results))
 
-    return {"query": q, "results": results}
+    return {"query": q, "searched_sites": selected_sites, "results": results}
 
 @app.get("/api/recipe")
 async def recipe(url: str = Query(min_length=12, max_length=2000)):
