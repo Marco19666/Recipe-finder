@@ -12,6 +12,44 @@ from workers import asgi
 
 app = FastAPI(title="Recipe Finder API", docs_url=None, redoc_url=None)
 
+
+@app.middleware("http")
+async def enforce_utf8_charset(request: Request, call_next):
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith(("application/json", "text/")) and "charset=" not in content_type.lower():
+        response.headers["content-type"] = content_type + "; charset=utf-8"
+    return response
+
+
+def decode_html_response(response: httpx.Response) -> str:
+    """Decode publisher HTML using its declared charset, with safe UTF-8/Windows fallback."""
+    raw = response.content
+    if raw.startswith(b"\\xef\\xbb\\xbf"):
+        return raw.decode("utf-8-sig", errors="replace")
+    import re
+    candidates = []
+    content_type = response.headers.get("content-type", "")
+    header_match = re.search(r"charset\\s*=\\s*[\\\"']?([\\w.-]+)", content_type, re.I)
+    if header_match:
+        candidates.append(header_match.group(1))
+    meta = raw[:8192].decode("ascii", errors="ignore")
+    meta_match = re.search(r"<meta[^>]+charset\\s*=\\s*[\\\"']?([\\w.-]+)", meta, re.I)
+    if meta_match:
+        candidates.append(meta_match.group(1))
+    candidates.extend(["utf-8", "windows-1252"])
+    tried = set()
+    for encoding in candidates:
+        key = encoding.lower()
+        if key in tried:
+            continue
+        tried.add(key)
+        try:
+            return raw.decode(encoding, errors="strict")
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return raw.decode("utf-8", errors="replace")
+
 ALLOWED_SITES = {
     "misya.info",
     "cookist.it",
@@ -254,7 +292,7 @@ async def _add_result_image(client: httpx.AsyncClient, item: dict) -> dict:
     try:
         response = await client.get(item["url"])
         if response.status_code == 200 and "html" in response.headers.get("content-type", "").lower():
-            html = response.text
+            html = decode_html_response(response)
             parser = PageMetaParser()
             parser.feed(html[:300000])
             if parser.image:
@@ -395,7 +433,7 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
         if response.status_code != 200 or "html" not in response.headers.get("content-type", "").lower():
             return []
         parser = SiteSearchParser()
-        parser.feed(response.text)
+        parser.feed(decode_html_response(response))
         found, seen = [], set()
         terms = [term.casefold() for term in query.split() if len(term) > 2]
         for item in parser.links:
@@ -513,7 +551,7 @@ async def recipe(url: str = Query(min_length=12, max_length=2000)):
             response.raise_for_status()
             if "text/html" not in response.headers.get("content-type", "").lower():
                 raise HTTPException(status_code=415, detail="La pagina selezionata non è una pagina HTML.")
-            html = response.text
+            html = decode_html_response(response)
 
         data = extract_recipe(html, url)
         data["source"] = host
