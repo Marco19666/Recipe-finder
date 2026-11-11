@@ -317,7 +317,11 @@ def _query_match_score(title: str, description: str, query: str) -> int:
 
     title_hits = sum(has_match(term, title_words) for term in terms)
     description_hits = sum(has_match(term, description_words) for term in terms)
-    if not title_hits and not description_hits:
+    # Richiedi corrispondenza nel titolo, non soltanto nella descrizione.
+    # Per ricerche composte, almeno metà dei termini deve comparire nel titolo.
+    if title_hits == 0:
+        return 0
+    if len(terms) >= 2 and title_hits * 2 < len(terms):
         return 0
 
     # Exact phrase in the title is the strongest signal. A full set of
