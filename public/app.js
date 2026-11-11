@@ -122,6 +122,41 @@ const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, char
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[char]));
 
+async function loadDailyRecipe() {
+  const dailyGrid = document.querySelector("#daily-recipe");
+  if (!dailyGrid) return;
+  const dailyQueries = [
+    "pasta al forno", "pollo al limone", "risotto ai funghi", "parmigiana di melanzane",
+    "polpette al sugo", "torta di mele", "lasagne", "pasta alla carbonara",
+    "frittata di verdure", "tiramisù", "salmone al forno", "gnocchi al pomodoro",
+    "crostata", "spezzatino", "pasta al pesto"
+  ];
+  const now = new Date();
+  const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
+  try {
+    const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(getSelectedSites().join(",")) + "&_=" + Date.now(), { cache: "no-store" });
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) throw new Error("Risposta non valida");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile");
+    const item = (payload.results || []).find(result => result && result.title && result.url);
+    if (!item) throw new Error("Nessuna ricetta trovata");
+    const image = item.image
+      ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager" referrerpolicy="no-referrer">'
+      : '<div class="result-placeholder" aria-hidden="true">✳</div>';
+    const description = esc((item.description || "Scopri ingredienti e preparazione di questa ricetta.") .slice(0, 180));
+    dailyGrid.innerHTML = '<article class="result-card daily-recipe-card">' + image +
+      '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span>' +
+      '<h3>' + esc(item.title) + '</h3><p>' + description + '</p>' +
+      '<div class="card-actions"><button class="recipe-button" id="daily-recipe-open" type="button">Scopri la ricetta</button></div></div></article>';
+    document.querySelector("#daily-recipe-open").addEventListener("click", () => loadRecipe(item.url, item));
+  } catch {
+    dailyGrid.innerHTML = '<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
+  }
+}
+
+
 function notify(message, duration = 3200) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -357,3 +392,6 @@ document.addEventListener("keydown", event => {
     document.body.style.overflow = "";
   }
 });
+
+
+loadDailyRecipe();
