@@ -12,7 +12,7 @@ from workers import asgi
 app = FastAPI(title="Recipe Finder API", docs_url=None, redoc_url=None)
 
 ALLOWED_SITES = {
-    "giallozafferano.it",
+    "misya.info",
     "cookist.it",
     "cucchiaio.it",
     "fattoincasadabenedetta.it",
