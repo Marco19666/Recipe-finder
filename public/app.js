@@ -34,6 +34,10 @@ async function searchRecipes(query) {
   resultsGrid.innerHTML = '<div class="empty-state">Sto cercando tra i siti di cucina...</div>';
   try {
     const response = await fetch("/api/search?q=" + encodeURIComponent(query));
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error("Il servizio di ricerca ha restituito una pagina non valida. Riprova tra qualche secondo.");
+    }
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Ricerca non disponibile.");
     const results = data.results || [];
@@ -43,7 +47,7 @@ async function searchRecipes(query) {
       return;
     }
     resultsGrid.innerHTML = results.map((item, index) => {
-      const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
+      const image = item.image && index < 4 ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
       return '<article class="result-card">' + image +
         '<div class="result-body"><span class="result-source">' + esc(item.source) + '</span>' +
@@ -67,6 +71,10 @@ async function loadRecipe(url) {
   recipeContent.innerHTML = '<div class="empty-state">Sto leggendo la ricetta dalla fonte originale...</div>';
   try {
     const response = await fetch("/api/recipe?url=" + encodeURIComponent(url));
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error("Il sito della ricetta ha restituito una risposta non valida. Riprova più tardi.");
+    }
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Non è stato possibile leggere la ricetta.");
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
