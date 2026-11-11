@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import os
+import json
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import Response
-from recipe_scrapers import scrape_html
 from workers import asgi
 
 app = FastAPI(title="Recipe Finder API", docs_url=None, redoc_url=None)
@@ -38,11 +37,7 @@ class DuckDuckGoResultsParser(HTMLParser):
         classes = attrs.get("class", "").split()
 
         if tag == "a" and "result__a" in classes:
-            self._active = {
-                "title": "",
-                "url": attrs.get("href", ""),
-                "description": "",
-            }
+            self._active = {"title": "", "url": attrs.get("href", ""), "description": ""}
             self.results.append(self._active)
             self._capture = "title"
         elif tag == "a" and "result__snippet" in classes and self._active is not None:
@@ -55,6 +50,34 @@ class DuckDuckGoResultsParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "a":
             self._capture = None
+
+
+class JsonLdParser(HTMLParser):
+    """Collect JSON-LD script contents without external HTML/XML dependencies."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.scripts = []
+        self._inside = False
+        self._parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            attrs = dict(attrs)
+            if "ld+json" in attrs.get("type", "").lower():
+                self._inside = True
+                self._parts = []
+
+    def handle_data(self, data):
+        if self._inside:
+            self._parts.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "script" and self._inside:
+            self.scripts.append("".join(self._parts))
+            self._inside = False
+            self._parts = []
+
 
 def allowed_host(url: str) -> str | None:
     try:
@@ -77,31 +100,105 @@ def direct_result_url(url: str) -> str:
     return url
 
 
-def recipe_to_dict(scraper) -> dict:
-    def value(name: str, default=None):
-        try:
-            result = getattr(scraper, name)()
-            return result if result not in ("", [], None) else default
-        except Exception:
-            return default
+def _walk_json(value):
+    """Yield dictionaries containing structured data, including nested graphs."""
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from _walk_json(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_json(child)
 
-    instructions = value("instructions", []) or []
-    if isinstance(instructions, str):
-        instructions = [line.strip() for line in instructions.splitlines() if line.strip()]
+
+def _is_recipe(data):
+    kind = data.get("@type", [])
+    if isinstance(kind, str):
+        kind = [kind]
+    return any(str(item).rsplit("/", 1)[-1].rsplit("#", 1)[-1] == "Recipe" for item in kind)
+
+
+def _as_text(value):
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        return str(value.get("name") or value.get("text") or "").strip()
+    return ""
+
+
+def _instructions(value):
+    result = []
+    def add(item):
+        if isinstance(item, str):
+            text = item.strip()
+            if text:
+                result.append(text)
+        elif isinstance(item, list):
+            for child in item:
+                add(child)
+        elif isinstance(item, dict):
+            if item.get("@type") == "HowToSection":
+                add(item.get("itemListElement") or item.get("steps") or [])
+            else:
+                add(item.get("text") or item.get("name") or item.get("itemListElement") or "")
+    add(value)
+    return result
+
+
+def _minutes(value):
+    if not isinstance(value, str):
+        return None
+    # Schema.org durations are commonly expressed as PT1H30M.
+    import re
+    match = re.fullmatch(r"PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?", value.strip(), re.I)
+    if not match:
+        return value
+    hours, minutes, seconds = (float(part or 0) for part in match.groups())
+    total = round(hours * 60 + minutes + seconds / 60)
+    return total or None
+
+
+def extract_recipe(html: str, url: str) -> dict:
+    parser = JsonLdParser()
+    parser.feed(html)
+    recipe_data = None
+    for script in parser.scripts:
+        try:
+            structured = json.loads(script.strip().removeprefix("\ufeff"))
+        except (json.JSONDecodeError, TypeError):
+            continue
+        recipe_data = next((item for item in _walk_json(structured) if _is_recipe(item)), None)
+        if recipe_data:
+            break
+
+    if not recipe_data:
+        raise ValueError("Nessun dato Recipe JSON-LD trovato")
+
+    image = recipe_data.get("image")
+    if isinstance(image, list):
+        image = next((_as_text(item) for item in image if _as_text(item)), None)
+    elif isinstance(image, dict):
+        image = image.get("url") or image.get("contentUrl")
+
+    author = recipe_data.get("author")
+    if isinstance(author, list):
+        author = ", ".join(filter(None, (_as_text(item) for item in author)))
+    else:
+        author = _as_text(author) or None
 
     return {
-        "title": value("title", "Ricetta"),
-        "image": value("image"),
-        "description": value("description"),
-        "ingredients": value("ingredients", []) or [],
-        "instructions": instructions,
-        "total_time": value("total_time"),
-        "prep_time": value("prep_time"),
-        "cook_time": value("cook_time"),
-        "yields": value("yields"),
-        "author": value("author"),
-        "source": value("host"),
-        "url": value("canonical_url") or value("url"),
+        "title": _as_text(recipe_data.get("name")) or "Ricetta",
+        "image": image if isinstance(image, str) else None,
+        "description": _as_text(recipe_data.get("description")) or None,
+        "ingredients": recipe_data.get("recipeIngredient") or [],
+        "instructions": _instructions(recipe_data.get("recipeInstructions")),
+        "total_time": _minutes(recipe_data.get("totalTime")),
+        "prep_time": _minutes(recipe_data.get("prepTime")),
+        "cook_time": _minutes(recipe_data.get("cookTime")),
+        "yields": _as_text(recipe_data.get("recipeYield")) or None,
+        "author": author,
+        "source": urlparse(url).hostname,
+        "url": recipe_data.get("url") or url,
     }
 
 
@@ -125,10 +222,7 @@ async def search(q: str = Query(min_length=2, max_length=100)):
         async with httpx.AsyncClient(
             timeout=15.0,
             follow_redirects=False,
-            headers={
-                "User-Agent": USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml",
-            },
+            headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
         ) as client:
             response = await client.get(DUCKDUCKGO_ENDPOINT, params=params)
             response.raise_for_status()
@@ -177,8 +271,7 @@ async def recipe(url: str = Query(min_length=12, max_length=2000)):
                 raise HTTPException(status_code=415, detail="La pagina selezionata non è una pagina HTML.")
             html = response.text
 
-        scraper = scrape_html(html=html, org_url=url)
-        data = recipe_to_dict(scraper)
+        data = extract_recipe(html, url)
         data["source"] = host
         data["url"] = url
         if not data["ingredients"] and not data["instructions"]:
