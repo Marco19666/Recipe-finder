@@ -25,16 +25,16 @@ async def enforce_utf8_charset(request: Request, call_next):
 def decode_html_response(response: httpx.Response) -> str:
     """Decode publisher HTML using its declared charset, with safe UTF-8/Windows fallback."""
     raw = response.content
-    if raw.startswith(b"\\xef\\xbb\\xbf"):
+    if raw.startswith(b"\xef\xbb\xbf"):
         return raw.decode("utf-8-sig", errors="replace")
     import re
     candidates = []
     content_type = response.headers.get("content-type", "")
-    header_match = re.search(r"charset\\s*=\\s*[\\\"']?([\\w.-]+)", content_type, re.I)
+    header_match = re.search(r"charset\s*=\s*[\\"']?([\w.-]+)", content_type, re.I)
     if header_match:
         candidates.append(header_match.group(1))
     meta = raw[:8192].decode("ascii", errors="ignore")
-    meta_match = re.search(r"<meta[^>]+charset\\s*=\\s*[\\\"']?([\\w.-]+)", meta, re.I)
+    meta_match = re.search(r"<meta[^>]+charset\s*=\s*[\\"']?([\w.-]+)", meta, re.I)
     if meta_match:
         candidates.append(meta_match.group(1))
     candidates.extend(["utf-8", "windows-1252"])
