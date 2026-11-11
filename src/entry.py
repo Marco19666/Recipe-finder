@@ -233,18 +233,40 @@ class PageMetaParser(HTMLParser):
             self.description = value
 
 
+def _is_complete_recipe(data: dict) -> bool:
+    """A usable recipe must include a real title, ingredients, and procedure."""
+    title = str(data.get("title") or "").strip()
+    ingredients = data.get("ingredients")
+    instructions = data.get("instructions")
+    if not title or title.casefold() in {"ricetta", "recipe", "senza titolo"}:
+        return False
+    if not isinstance(ingredients, list) or not any(str(value).strip() for value in ingredients):
+        return False
+    if not isinstance(instructions, list) or not any(str(value).strip() for value in instructions):
+        return False
+    return True
+
+
 async def _add_result_image(client: httpx.AsyncClient, item: dict) -> dict:
+    # This page fetch is already needed for the card image. Reuse its HTML
+    # to validate structured recipe data, avoiding any additional network call.
+    item["_valid_recipe"] = False
     try:
         response = await client.get(item["url"])
         if response.status_code == 200 and "html" in response.headers.get("content-type", "").lower():
+            html = response.text
             parser = PageMetaParser()
-            parser.feed(response.text[:300000])
+            parser.feed(html[:300000])
             if parser.image:
                 image_url = urljoin(str(response.url), parser.image)
                 if urlparse(image_url).scheme in ("http", "https"):
                     item["image"] = image_url
             if parser.description:
                 item["description"] = parser.description
+            try:
+                item["_valid_recipe"] = _is_complete_recipe(extract_recipe(html, item["url"]))
+            except (ValueError, TypeError, KeyError):
+                item["_valid_recipe"] = False
     except Exception:
         pass
     return item
@@ -471,6 +493,9 @@ async def search(
 
         await asyncio.gather(*(enrich(item) for item in results))
 
+    # Scarta le pagine che non contengono tutti e tre i campi essenziali.
+    results = [item for item in results if item.pop("_valid_recipe", False)]
+
     return {"query": q, "searched_sites": selected_sites, "results": results}
 
 @app.get("/api/recipe")
@@ -494,8 +519,11 @@ async def recipe(url: str = Query(min_length=12, max_length=2000)):
         data = extract_recipe(html, url)
         data["source"] = host
         data["url"] = url
-        if not data["ingredients"] and not data["instructions"]:
-            raise HTTPException(status_code=422, detail="Non sono riuscito a trovare i dati della ricetta in questa pagina.")
+        if not _is_complete_recipe(data):
+            raise HTTPException(
+                status_code=422,
+                detail="Ricetta scartata: la pagina non contiene titolo, ingredienti e procedimento completi.",
+            )
         return data
     except HTTPException:
         raise
