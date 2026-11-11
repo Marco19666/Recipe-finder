@@ -213,7 +213,7 @@ async function searchRecipes(query) {
     let completed = 0;
     for (let index = 0; index < selectedSites.length && found.length < 10; index++) {
       const site = selectedSites[index];
-      const averageMs = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 8000;
+      const averageMs = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 10000;
       const remainingEstimate = Math.ceil((averageMs * (selectedSites.length - index)) / 1000);
       if (progressTitle) progressTitle.textContent = "Sto consultando " + site;
       if (progressDetail) progressDetail.textContent = "Sito " + (index + 1) + " di " + selectedSites.length + " · tempo stimato rimanente: circa " + remainingEstimate + " secondi";
