@@ -308,7 +308,6 @@ def _query_match_score(title: str, description: str, query: str) -> int:
     """Rank recipe results by title relevance first, then description relevance."""
     import re
     import unicodedata
-    from difflib import SequenceMatcher
 
     def normalize(value):
         value = unicodedata.normalize("NFKD", value.casefold())
@@ -330,12 +329,9 @@ def _query_match_score(title: str, description: str, query: str) -> int:
         return 0
 
     def has_match(term, words):
-        for word in words:
-            if term == word or term in word or word in term:
-                return True
-            if min(len(term), len(word)) >= 5 and SequenceMatcher(None, term, word).ratio() >= 0.70:
-                return True
-        return False
+        # Match whole normalized words only: "norcina" must not match
+        # "nocino" or "porcino" through substring/fuzzy similarity.
+        return term in words
 
     title_hits = sum(has_match(term, title_words) for term in terms)
     description_hits = sum(has_match(term, description_words) for term in terms)
