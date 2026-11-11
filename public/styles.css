@@ -166,3 +166,25 @@ footer span:first-child{font-family:"Playfair Display",Georgia,serif;font-size:1
 .progress-track>div{height:100%;width:0;background:linear-gradient(90deg,#72916e,#3f6245);border-radius:10px;transition:width .35s ease}
 @keyframes recipe-search-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.search-spinner{animation:none}.progress-track>div{transition:none}}
+
+/* Budget, valutazioni personali e cronologia ricerche */
+.budget-box{max-width:690px;margin:18px auto 22px;padding:19px 21px;background:#fff;border:1px solid #dfe4d9;border-radius:15px;text-align:left;box-shadow:0 7px 22px rgba(47,73,49,.05);display:grid;gap:10px}
+.budget-box strong{font:600 21px "Playfair Display",serif;color:var(--green-dark)}
+.budget-box p{margin:2px 0 5px;color:var(--muted);font-size:13px}
+.budget-box label{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--green-dark)}
+.budget-box input,.budget-box select{width:100%;min-height:43px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink);font:14px "DM Sans"}
+.budget-fields{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.budget-box small{font-size:11px;line-height:1.5;color:var(--muted)}
+.budget-box .recipe-button{justify-self:start}
+.favorite-review{margin:12px 0;padding:12px;background:#f7f8f4;border:1px solid #e4e8df;border-radius:10px;display:grid;gap:7px}
+.favorite-review label{font-size:12px;font-weight:600;color:var(--green-dark)}
+.review-stars{display:flex;gap:5px}
+.review-star{border:0;background:transparent;padding:0 2px;font-size:25px;line-height:1;color:#c7c9c1;cursor:pointer}
+.review-star.is-active{color:#d49a36}
+.favorite-review textarea{width:100%;min-height:58px;resize:vertical;border:1px solid var(--line);border-radius:7px;padding:9px;font:13px/1.5 "DM Sans";color:var(--ink);background:#fff}
+.review-save{justify-self:start}
+.history-list{max-width:760px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:13px;padding:8px 16px}
+.history-item{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.history-item:last-child{border-bottom:0}
+.history-query{flex:1;min-width:0;text-align:left;border:0;background:transparent;color:var(--green-dark);font:600 14px "DM Sans";padding:7px 0;overflow-wrap:anywhere;cursor:pointer}
+@media(max-width:520px){.budget-box{padding:16px}.budget-fields{grid-template-columns:1fr 1fr}.favorite-review{padding:10px}}
