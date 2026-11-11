@@ -19,6 +19,8 @@ async def enforce_utf8_charset(request: Request, call_next):
     content_type = response.headers.get("content-type", "")
     if content_type.startswith(("application/json", "text/")) and "charset=" not in content_type.lower():
         response.headers["content-type"] = content_type + "; charset=utf-8"
+    if content_type.startswith("application/json"):
+        response.headers["cache-control"] = "no-store"
     return response
 
 
