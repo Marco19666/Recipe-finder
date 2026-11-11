@@ -212,6 +212,42 @@ async def sites():
     return {"sites": sorted(ALLOWED_SITES)}
 
 
+class PageMetaParser(HTMLParser):
+    """Read the representative image and description from a recipe page."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.image = None
+        self.description = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "meta":
+            return
+        attrs = dict(attrs)
+        key = (attrs.get("property") or attrs.get("name") or "").lower()
+        value = attrs.get("content", "").strip()
+        if key in ("og:image", "og:image:url", "twitter:image") and value and not self.image:
+            self.image = value
+        elif key in ("og:description", "description") and value and not self.description:
+            self.description = value
+
+
+async def _add_result_image(client: httpx.AsyncClient, item: dict) -> dict:
+    try:
+        response = await client.get(item["url"])
+        if response.status_code == 200 and "html" in response.headers.get("content-type", "").lower():
+            parser = PageMetaParser()
+            parser.feed(response.text[:300000])
+            if parser.image:
+                image_url = urljoin(str(response.url), parser.image)
+                if urlparse(image_url).scheme in ("http", "https"):
+                    item["image"] = image_url
+            if parser.description:
+                item["description"] = parser.description
+    except Exception:
+        pass
+    return item
+
+
 class SiteSearchParser(HTMLParser):
     """Collect links from a publisher's own search page."""
     def __init__(self):
@@ -249,7 +285,7 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
     # Try the publisher's public WordPress search API first; no third-party search engine.
     api_url = base + "/wp-json/wp/v2/search"
     try:
-        response = await client.get(api_url, params={"search": query, "per_page": 10, "type": "post"})
+        response = await client.get(api_url, params={"search": query, "per_page": 8, "type": "post"})
         if response.status_code == 200:
             payload = response.json()
             found = []
@@ -262,7 +298,7 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
                     found.append({"title": " ".join(str(title).split()), "url": url,
                                   "description": "", "source": site, "image": None})
             if found:
-                return found
+                return found[:8]
     except Exception:
         pass
 
@@ -288,7 +324,7 @@ async def _search_one_site(client: httpx.AsyncClient, site: str, query: str) -> 
                           "source": site, "image": None})
             if len(found) >= 8:
                 break
-        return found
+        return found[:8]
     except Exception:
         return []
 
@@ -313,14 +349,22 @@ async def search(q: str = Query(min_length=2, max_length=100)):
     for batch in batches:
         if isinstance(batch, Exception):
             continue
+        site_count = 0
         for item in batch:
-            if item["url"] not in seen:
+            if item["url"] not in seen and site_count < 8:
                 seen.add(item["url"])
                 results.append(item)
-            if len(results) >= 20:
-                break
-        if len(results) >= 20:
-            break
+                site_count += 1
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(8.0, connect=4.0),
+        follow_redirects=True,
+        headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html"},
+    ) as image_client:
+        results = await __import__("asyncio").gather(
+            *(_add_result_image(image_client, item) for item in results),
+            return_exceptions=False,
+        )
 
     return {"query": q, "results": results}
 
