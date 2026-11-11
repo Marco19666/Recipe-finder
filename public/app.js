@@ -43,13 +43,12 @@ async function searchRecipes(query) {
       return;
     }
     resultsGrid.innerHTML = results.map((item, index) => {
-      const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder">✳</div>';
+      const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
       return '<article class="result-card">' + image +
         '<div class="result-body"><span class="result-source">' + esc(item.source) + '</span>' +
         '<h3>' + esc(item.title) + '</h3><p>' + description + '</p>' +
-        '<div class="card-actions"><a class="text-link" href="' + esc(item.url) + '" target="_blank" rel="noopener noreferrer">Fonte originale ↗</a>' +
-        '<button class="recipe-button" data-recipe="' + index + '">Ingredienti e procedimento</button></div></div></article>';
+        '<div class="card-actions"><button class="recipe-button" data-recipe="' + index + '">Ingredienti e procedimento</button></div></div></article>';
     }).join("");
     resultsGrid.querySelectorAll("[data-recipe]").forEach(button => {
       button.addEventListener("click", () => loadRecipe(results[Number(button.dataset.recipe)].url));
@@ -82,10 +81,9 @@ async function loadRecipe(url) {
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || "Fonte originale") + '</span>' +
       '<h2 id="recipe-title">' + esc(data.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
-      image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps +
-      '<a class="source-visit" href="' + esc(data.url || url) + '" target="_blank" rel="noopener noreferrer">Vai alla ricetta originale ↗</a>';
+      image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps;
   } catch (error) {
-    recipeContent.innerHTML = '<div class="error-state">' + esc(error.message) + '<br><br><a class="text-link" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Apri il sito originale ↗</a></div>';
+    recipeContent.innerHTML = '<div class="error-state">' + esc(error.message) + '</div>';
   }
 }
 
