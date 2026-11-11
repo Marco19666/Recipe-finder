@@ -417,13 +417,6 @@ document.querySelector("#show-shopping").addEventListener("click", showShopping)
 document.querySelector("#show-history").addEventListener("click", showHistory);
 document.querySelector("#history-back").addEventListener("click", () => { document.querySelector("#history-section").hidden = true; welcomeSection.hidden = false; });
 document.querySelector("#history-clear").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderSearchHistory(); notify("Cronologia cancellata."); });
-document.querySelector("#budget-search").addEventListener("click", () => {
-  const ingredient = document.querySelector("#budget-query").value.trim();
-  const budget = document.querySelector("#budget-limit").value;
-  const people = document.querySelector("#budget-people").value;
-  const query = (ingredient ? ingredient + " " : "") + "ricette economiche fino a " + budget + " euro a persona per " + people + " persone";
-  searchRecipes(query);
-});
 document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; });
 document.querySelector("#shopping-clear").addEventListener("click", () => {
   saveShoppingItems([]); renderShoppingList(); notify("Lista della spesa svuotata.");
