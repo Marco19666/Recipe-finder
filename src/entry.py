@@ -32,11 +32,11 @@ def decode_html_response(response: httpx.Response) -> str:
     import re
     candidates = []
     content_type = response.headers.get("content-type", "")
-    header_match = re.search(r"charset\s*=\s*[\\"']?([\w.-]+)", content_type, re.I)
+    header_match = re.search(r"""charset\s*=\s*["\']?([\w.-]+)""", content_type, re.I)
     if header_match:
         candidates.append(header_match.group(1))
     meta = raw[:8192].decode("ascii", errors="ignore")
-    meta_match = re.search(r"<meta[^>]+charset\s*=\s*[\\"']?([\w.-]+)", meta, re.I)
+    meta_match = re.search(r"""<meta[^>]+charset\s*=\s*["\']?([\w.-]+)""", meta, re.I)
     if meta_match:
         candidates.append(meta_match.group(1))
     candidates.extend(["utf-8", "windows-1252"])
