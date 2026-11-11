@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=3">
+  <link rel="stylesheet" href="/styles.css?v=4">
 </head>
 <body>
   <header class="topbar">
@@ -26,7 +26,7 @@
         <input id="query" type="search" placeholder="Es. pasta al pesto, torta di mele..." autocomplete="off" minlength="2" required>
         <button type="submit">Cerca ricette <span aria-hidden="true">↗</span></button>
       </form>
-      <div class="home-actions"><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button></div>
+      <div class="home-actions"><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button><button id="show-personal" class="favorites-home-button" type="button">＋ Le mie ricette <span id="personal-count">0</span></button></div>
       <div class="popular"><span>PROVA:</span><button class="chip" data-query="pasta alla carbonara">Carbonara</button><button class="chip" data-query="torta di mele">Torta di mele</button><button class="chip" data-query="polpette al sugo">Polpette</button></div>
       <div class="source-line"><span class="source-dot"></span> Fonti selezionate: Misya, Cookist, Cucchiaio d'Argento e altri</div>
     </section>
@@ -37,6 +37,19 @@
     <section id="favorites-section" class="results-section" hidden>
       <div class="section-heading"><div><div class="eyebrow">LA TUA RACCOLTA</div><h2>Ricette preferite</h2></div><button id="back-home" class="back-home-button" type="button">Torna alla home</button></div>
       <div id="favorites-grid" class="results-grid"></div>
+    </section>
+    <section id="personal-section" class="results-section" hidden>
+      <div class="section-heading"><div><div class="eyebrow">IL TUO RICETTARIO</div><h2>Le mie ricette</h2></div><button id="personal-back" class="back-home-button" type="button">Torna alla home</button></div>
+      <form id="personal-form" class="personal-form">
+        <h3>Aggiungi una ricetta personale</h3>
+        <label for="personal-title">Nome della ricetta</label><input id="personal-title" required maxlength="100" placeholder="Es. Lasagne della nonna">
+        <label for="personal-ingredients">Ingredienti</label><textarea id="personal-ingredients" required rows="4" placeholder="Scrivi gli ingredienti, uno per riga"></textarea>
+        <label for="personal-steps">Preparazione</label><textarea id="personal-steps" required rows="5" placeholder="Descrivi i passaggi, uno per riga"></textarea>
+        <label for="personal-time">Tempo di preparazione (minuti, facoltativo)</label><input id="personal-time" type="number" min="1" max="1440" placeholder="Es. 45">
+        <button type="submit" class="recipe-button">Salva ricetta personale</button>
+      </form>
+      <h3 class="personal-list-title">Le ricette che hai aggiunto</h3>
+      <div id="personal-grid" class="results-grid"></div>
     </section>
     <section id="welcome" class="welcome">
       <div class="welcome-icon">✳</div>
@@ -53,6 +66,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>ricetta.</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=2" defer></script>
+  <script src="/app.js?v=3" defer></script>
 </body>
 </html>
