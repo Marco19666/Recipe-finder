@@ -122,10 +122,10 @@ const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, char
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[char]));
 
-function notify(message) {
+function notify(message, duration = 3200) {
   toast.textContent = message;
   toast.classList.add("show");
-  window.setTimeout(() => toast.classList.remove("show"), 3200);
+  window.setTimeout(() => toast.classList.remove("show"), duration);
 }
 function setLoading(loading) {
   const button = form.querySelector("button");
@@ -137,6 +137,10 @@ async function searchRecipes(query) {
   queryInput.value = query;
   const selectedSites = getSelectedSites();
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
+  if (selectedSites.length > 3 && sessionStorage.getItem("recipe-finder-many-sites-reminder-v1") !== "shown") {
+    sessionStorage.setItem("recipe-finder-many-sites-reminder-v1", "shown");
+    notify("Promemoria: con più di 3 siti la ricerca potrebbe richiedere più tempo o incontrare rallentamenti. Puoi continuare normalmente.", 6500);
+  }
   setLoading(true);
   welcome.hidden = true;
   favoritesSection.hidden = true;
