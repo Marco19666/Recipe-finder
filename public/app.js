@@ -93,13 +93,23 @@ function toggleFavorite(item) {
 }
 function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
 function renderFavorites() {
-  const items = getFavorites();
+  const all = getFavorites();
+  const term = (document.querySelector("#favorites-search").value || "").trim().toLocaleLowerCase("it");
+  const category = document.querySelector("#favorites-category-filter").value;
+  const items = all.filter(item => (!category || (item.category || "Altro") === category) &&
+    (!term || (item.title + " " + (item.source || "")).toLocaleLowerCase("it").includes(term)));
   favoritesGrid.innerHTML = items.length ? items.map((item, index) => {
     const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder"></div>';
-    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div></div></article>';
-  }).join("") : '<div class="empty-state">Non hai ancora salvato ricette. Apri una ricetta e premi “Ricetta preferita”.</div>';
+    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><label class="favorite-category-label">Categoria <select class="favorite-category" data-favorite-category="' + index + '"><option' + ((item.category || "Altro") === "Primo" ? " selected" : "") + '>Primo</option><option' + (item.category === "Secondo" ? " selected" : "") + '>Secondo</option><option' + (item.category === "Contorno" ? " selected" : "") + '>Contorno</option><option' + (item.category === "Antipasto" ? " selected" : "") + '>Antipasto</option><option' + (item.category === "Dolce" ? " selected" : "") + '>Dolce</option><option' + ((item.category || "Altro") === "Altro" ? " selected" : "") + '>Altro</option></select></label><div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div>' + (item.ingredients && item.ingredients.length ? '<button class="shopping-add" data-favorite-shopping="' + index + '" type="button">＋ Ingredienti nella lista</button>' : '') + '</div></article>';
+  }).join("") : '<div class="empty-state">' + (all.length ? "Nessuna ricetta corrisponde alla ricerca o categoria scelta." : "Non hai ancora salvato ricette. Apri una ricetta e premi “Ricetta preferita”.") + '</div>';
   favoritesGrid.querySelectorAll("[data-favorite-open]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteOpen)]; loadRecipe(item.url, item); }));
   favoritesGrid.querySelectorAll("[data-favorite-remove]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteRemove)]; saveFavorites(getFavorites().filter(saved => saved.url !== item.url)); renderFavorites(); }));
+  favoritesGrid.querySelectorAll("[data-favorite-category]").forEach(select => select.addEventListener("change", () => {
+    const item = items[Number(select.dataset.favoriteCategory)];
+    saveFavorites(getFavorites().map(saved => saved.url === item.url ? { ...saved, category: select.value } : saved));
+    renderFavorites();
+  }));
+  favoritesGrid.querySelectorAll("[data-favorite-shopping]").forEach(button => button.addEventListener("click", () => addShoppingIngredients(items[Number(button.dataset.favoriteShopping)].ingredients)));
 }
 updateFavoritesCount();
 
@@ -185,7 +195,8 @@ async function loadRecipe(url, fallback = {}) {
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
-    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "" };
+    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, category: fallback.category || "Altro" };
+    if (isFavorite(url)) { saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...savedItem } : item)); }
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
       '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
       '<button type="button" id="toggle-favorite" class="favorite-toggle" aria-pressed="' + isFavorite(url) + '">' + (isFavorite(url) ? "♥ Ricetta preferita" : "♡ Ricetta preferita") + '</button>' +
@@ -275,6 +286,8 @@ document.querySelector("#personal-form").addEventListener("submit", async event 
   } catch (error) { notify(error.message || "Non riesco a salvare la foto."); }
 });
 favoritesButton.addEventListener("click", showFavorites);
+document.querySelector("#favorites-search").addEventListener("input", renderFavorites);
+document.querySelector("#favorites-category-filter").addEventListener("change", renderFavorites);
 document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; });
 form.addEventListener("submit", event => {
   event.preventDefault();
