@@ -3,7 +3,7 @@ name = "recipe-finder"
 version = "0.1.0"
 description = "Search selected cooking websites and extract recipe data"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "httpx", "recipe-scrapers"]
+dependencies = ["fastapi", "httpx"]
 
 [dependency-groups]
 dev = ["workers-py", "workers-runtime-sdk"]
