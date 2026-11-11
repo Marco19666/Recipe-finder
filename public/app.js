@@ -140,20 +140,34 @@ async function searchRecipes(query) {
   resultCount.textContent = "Ricerca in corso";
   resultsGrid.innerHTML = '<div class="empty-state">Sto cercando tra i siti di cucina...</div>';
   try {
-    const response = await fetch("/api/search?q=" + encodeURIComponent(query));
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      throw new Error("Il servizio di ricerca ha restituito una pagina non valida. Riprova tra qualche secondo.");
+    let data = null;
+    let lastError = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&_=" + Date.now(), { cache: "no-store" });
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          throw new Error("Il servizio di ricerca ha restituito una pagina non valida.");
+        }
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile.");
+        data = payload;
+        if ((data.results || []).length > 0 || attempt === 1) break;
+        resultsGrid.innerHTML = '<div class="empty-state">Nessun risultato al primo tentativo. Sto riprovando automaticamente...</div>';
+      } catch (error) {
+        lastError = error;
+        if (attempt === 1) throw error;
+        resultsGrid.innerHTML = '<div class="empty-state">La ricerca ha avuto un problema temporaneo. Riprovo automaticamente...</div>';
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 700));
     }
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Ricerca non disponibile.");
-    const results = data.results || [];
+    if (!data && lastError) throw lastError;
+    const results = data?.results || [];
     resultCount.textContent = results.length + (results.length === 1 ? " risultato" : " risultati");
     if (!results.length) {
-      resultsGrid.innerHTML = '<div class="empty-state">Nessuna ricetta trovata. Prova con un altro ingrediente o piatto.</div>';
+      resultsGrid.innerHTML = '<div class="empty-state">Non ho trovato ricette per questa ricerca. Prova con un altro ingrediente o piatto.</div>';
       return;
     }
-    favoritesSection.hidden = true;
     resultsGrid.innerHTML = results.map((item, index) => {
       const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
@@ -166,7 +180,7 @@ async function searchRecipes(query) {
       button.addEventListener("click", () => loadRecipe(results[Number(button.dataset.recipe)].url, results[Number(button.dataset.recipe)]));
     });
   } catch (error) {
-    resultsGrid.innerHTML = '<div class="error-state">' + esc(error.message) + '<br><br>Controlla la configurazione della ricerca e riprova.</div>';
+    resultsGrid.innerHTML = '<div class="error-state">' + esc(error.message) + '<br><br>La ricerca automatica non è riuscita. Riprova tra qualche secondo.</div>';
     resultCount.textContent = "Ricerca non riuscita";
   } finally {
     setLoading(false);
