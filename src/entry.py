@@ -528,7 +528,7 @@ async def archimede_ask(request: Request):
         "Categoria richiesta: " + category + ".\n"
         "Ingredienti dichiarati dall'utente (e soltanto questi sono disponibili): "
         + ingredients
-        + ".\\nPrepara una ricetta adatta a questa categoria."
+        + ".\nPrepara una ricetta adatta a questa categoria."
     )
     try:
         result = await env.AI.run(
