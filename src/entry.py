@@ -514,6 +514,8 @@ async def archimede_ask(request: Request):
         payload = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Richiesta non valida.")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Richiesta non valida.")
     ingredients = str(payload.get("ingredients") or "").strip()
     category = str(payload.get("category") or "").strip().capitalize()
     allowed_categories = {"Antipasto", "Primo", "Secondo", "Contorno", "Dolce"}
