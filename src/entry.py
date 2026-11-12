@@ -211,6 +211,44 @@ def _calories(value):
     return None
 
 
+def _estimate_recipe_calories(ingredients, yields):
+    """Stima kcal per porzione con valori medi per 100 g e quantità esplicite."""
+    import re
+    import unicodedata
+    foods = {"spaghetti":353,"pasta":353,"penne":353,"riso":360,"farina":364,"zucchero":400,"olio":884,"burro":717,"uova":143,"uovo":143,"latte":61,"panna":340,"parmigiano":402,"grana":398,"mozzarella":250,"ricotta":174,"passata":30,"pomodoro":18,"zucchine":17,"zucchina":17,"melanzane":25,"melanzana":25,"carote":41,"carota":41,"cipolla":40,"aglio":149,"patate":77,"patata":77,"pollo":165,"manzo":250,"macinato":250,"tonno":132,"salmone":208,"prosciutto":145,"pancetta":458,"speck":303,"salsiccia":301,"pane":265,"pangrattato":395,"miele":304,"cioccolato":546,"cacao":228,"mandorle":579,"noci":654,"nocciole":628,"limone":29,"arancia":47,"mela":52,"spinaci":23,"funghi":22,"broccoli":34,"peperoni":31,"peperone":31,"piselli":81,"ceci":164,"fagioli":127,"lenticchie":116,"yogurt":61,"mascarpone":420,"couscous":376}
+    def norm(value):
+        value = unicodedata.normalize("NFKD", str(value).casefold())
+        return "".join(ch for ch in value if not unicodedata.combining(ch))
+    pm = re.search(r"\d+(?:[.,]\d+)?", str(yields or ""))
+    portions = float(pm.group().replace(",", ".")) if pm else 0
+    if portions <= 0 or not isinstance(ingredients, list) or not ingredients:
+        return None
+    total = 0.0
+    for raw in ingredients:
+        text = norm(raw)
+        if any(term in text for term in ("q.b.", "quanto basta", "sale", "pepe", "acqua")):
+            continue
+        m = re.match(r"^\s*(\d+(?:[.,]\d+)?|\d+/\d+)\s*(kg|g|gr|ml|l|litri?|uova?|cucchiai?|cucchiaini?|bicchieri?)?\b", text)
+        if not m:
+            return None
+        token = m.group(1)
+        amount = float(token.replace(",", ".")) if "/" not in token else float(token.split("/")[0]) / float(token.split("/")[1])
+        unit = (m.group(2) or "").strip()
+        rest = text[m.end():].strip(" ,.-")
+        kcal = next((v for key, v in sorted(foods.items(), key=lambda item: len(item[0]), reverse=True) if key in rest), None)
+        if kcal is None:
+            return None
+        if unit in ("kg", "l", "litro", "litri"): grams = amount * 1000
+        elif unit == "ml": grams = amount
+        elif unit in ("uovo", "uova"): grams = amount * 60
+        elif unit.startswith("cucchiaio"): grams = amount * 10
+        elif unit.startswith("cucchiaino"): grams = amount * 5
+        elif unit.startswith("bicchier"): grams = amount * 200
+        else: grams = amount
+        total += grams * kcal / 100
+    return round(total / portions)
+
+
 def extract_recipe(html: str, url: str) -> dict:
     parser = JsonLdParser()
     parser.feed(html)
@@ -235,6 +273,11 @@ def extract_recipe(html: str, url: str) -> dict:
 
     nutrition = recipe_data.get("nutrition")
     calories_per_serving = _calories(nutrition.get("calories")) if isinstance(nutrition, dict) else None
+    if calories_per_serving is None:
+        calories_per_serving = _estimate_recipe_calories(
+            recipe_data.get("recipeIngredient") or [],
+            _as_text(recipe_data.get("recipeYield")) or None,
+        )
 
     return {
         "title": _as_text(recipe_data.get("name")) or "Ricetta",
