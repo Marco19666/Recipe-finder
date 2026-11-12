@@ -400,21 +400,19 @@ async function loadRecipe(url, fallback = {}) {
     const calorieReview = calories === null
       ? "Valutazione calorica: dati non disponibili"
       : "Calorie per porzione: " + calories + " kcal · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal)";
-    const meta = [
-      data.total_time ? "Tempo totale: " + data.total_time + " min" : "",
-      "Porzioni: " + (data.yields || "non indicate"),
-      calorieReview
-    ].filter(Boolean).map(esc).join(" · ");
+    const meta = data.total_time ? "Tempo totale: " + data.total_time + " min" : "";
+    const portions = '<div class="recipe-portions"><span>PORZIONI</span><strong>' + esc(data.yields || "Non indicate") + '</strong></div>';
+    const calorieFooter = '<div class="calorie-review"><strong>Valutazione calorica</strong><span>' + esc(calorieReview.replace(/^Valutazione calorica: /, "")) + '</span></div>';
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
     const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, yields: data.yields || null, total_time: data.total_time || null, calories_per_serving: calories, category: fallback.category || "Altro" };
     if (isFavorite(url)) { saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...savedItem } : item)); }
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
-      '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
+      '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2>' + (meta ? '<div class="recipe-meta">' + esc(meta) + '</div>' : '') +
       '<button type="button" id="toggle-favorite" class="favorite-toggle" aria-pressed="' + isFavorite(url) + '">' + (isFavorite(url) ? "♥ Ricetta preferita" : "♡ Ricetta preferita") + '</button>' +
       '<button type="button" id="recipe-shopping" class="shopping-add">＋ Ingredienti nella lista della spesa</button>' +
-      image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps;
+      image + portions + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps + calorieFooter;
     document.querySelector("#recipe-shopping").addEventListener("click", () => addShoppingIngredients(ingredients));
     document.querySelector("#toggle-favorite").addEventListener("click", () => {
       const button = document.querySelector("#toggle-favorite");
