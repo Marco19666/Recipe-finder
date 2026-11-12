@@ -697,3 +697,11 @@ body[data-theme="dark"] button#wake-toggle:not(.is-active) {
   color: #000 !important;
   -webkit-text-fill-color: #000 !important;
 }
+
+/* Il selettore Tema chiaro/scuro usa la stessa palette dei pulsanti utility. */
+body[data-theme="dark"] button#theme-toggle {
+  background: #edf1e9 !important;
+  border-color: #d8e0d4 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
