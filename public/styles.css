@@ -578,3 +578,6 @@ body[data-theme="dark"] .suggestion-category {
 @media(prefers-reduced-motion:reduce){.app-splash,.splash-mark,.splash-loader i{transition:none;animation:none}}
 body[data-theme="dark"] .app-splash{background:var(--paper);color:var(--text-primary)}
 body[data-theme="dark"] .splash-content p{color:var(--text-secondary)}
+
+/* Nasconde Prova oggi anche in presenza di regole display del layout. */
+.try-recipes-section[hidden] { display: none !important; }
