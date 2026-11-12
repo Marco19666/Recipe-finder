@@ -759,20 +759,15 @@ body[data-theme="dark"] button.utility-toggle.is-active {
 }
 
 
-/* Solo il pulsante Tema: in chiaro replica lo sfondo di Installa app; in scuro usa il verde scuro. */
+/* Il pulsante Tema resta verde chiaro in entrambe le modalità. */
 body:not([data-theme="dark"]) button#theme-toggle,
-body:not([data-theme="dark"]) button#theme-toggle.is-active {
-  background-color: #49694c !important;
-  border-color: #49694c !important;
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
-}
+body:not([data-theme="dark"]) button#theme-toggle.is-active,
 body[data-theme="dark"] button#theme-toggle,
 body[data-theme="dark"] button#theme-toggle.is-active {
-  background-color: #304c35 !important;
-  border-color: #304c35 !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  background-color: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
 }
 
 /* Il pulsante "Torna alla home" resta verde chiaro anche in tema scuro. */
