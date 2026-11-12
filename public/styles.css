@@ -698,3 +698,22 @@ body[data-theme="dark"] button#wake-toggle:not(.is-active) {
   -webkit-text-fill-color: #000 !important;
 }
 
+
+
+/* I due pulsanti utility condividono lo sfondo in base allo stato di Wake Up. Il testo resta sempre nero. */
+.utility-toggle,
+.utility-toggle.is-active,
+body[data-theme="dark"] .utility-toggle,
+body[data-theme="dark"] .utility-toggle.is-active {
+  background: #edf1e9 !important;
+  border-color: #d8e0d4 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+.utility-toggle.is-active,
+body[data-theme="dark"] .utility-toggle.is-active {
+  background: #304c35 !important;
+  border-color: #304c35 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
