@@ -847,3 +847,38 @@ body[data-theme="dark"] button#install-app:focus-visible {
   -webkit-text-fill-color: #ffffff !important;
   box-shadow: none !important;
 }
+
+/* COLORI FISSI: questi tre pulsanti non cambiano mai con tema, hover, pressione o focus. */
+body button#theme-toggle,
+body button#theme-toggle:hover,
+body button#theme-toggle:active,
+body button#theme-toggle:focus,
+body button#theme-toggle:focus-visible,
+body button#theme-toggle.is-active,
+body button#wake-toggle,
+body button#wake-toggle:hover,
+body button#wake-toggle:active,
+body button#wake-toggle:focus,
+body button#wake-toggle:focus-visible,
+body button#wake-toggle.is-active {
+  background: #dcebd5 !important;
+  background-color: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+body button#install-app,
+body button#install-app:hover,
+body button#install-app:active,
+body button#install-app:focus,
+body button#install-app:focus-visible {
+  background: #3f6245 !important;
+  background-color: #3f6245 !important;
+  border-color: #3f6245 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
