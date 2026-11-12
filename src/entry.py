@@ -212,7 +212,7 @@ def _calories(value):
 
 
 def _estimate_recipe_calories(ingredients, yields):
-    """Stima prudente delle kcal per porzione da quantità esplicite e valori medi per 100 g."""
+    """Stima indicativa delle kcal per porzione; rifiuta ingredienti calorici non quantificabili."""
     import re
     import unicodedata
 
@@ -223,20 +223,29 @@ def _estimate_recipe_calories(ingredients, yields):
         "ricotta":174,"passata":30,"pomodoro":18,"zucchine":17,"zucchina":17,
         "melanzane":25,"melanzana":25,"carote":41,"carota":41,"cipolla":40,
         "aglio":149,"patate":77,"patata":77,"pollo":165,"manzo":250,
-        "macinato":250,"tonno":132,"salmone":208,"prosciutto":145,"pancetta":458,
-        "speck":303,"salsiccia":301,"pane":265,"pangrattato":395,"miele":304,
-        "cioccolato":546,"cacao":228,"mandorle":579,"noci":654,"nocciole":628,
-        "limone":29,"arancia":47,"mela":52,"spinaci":23,"funghi":22,
-        "broccoli":34,"peperoni":31,"peperone":31,"piselli":81,"ceci":164,
-        "fagioli":127,"lenticchie":116,"yogurt":61,"mascarpone":420,"couscous":376,
-        "basilico":23,"prezzemolo":36,"rosmarino":131,"origano":265
+        "macinato":250,"trita":250,"carne":250,"vitello":172,"maiale":242,
+        "tonno":132,"salmone":208,"prosciutto":145,"pancetta":458,
+        "speck":303,"salsiccia":301,"pane":265,"pangrattato":395,"mollica":265,
+        "miele":304,"cioccolato":546,"cacao":228,"mandorle":579,"noci":654,
+        "nocciole":628,"limone":29,"arancia":47,"mela":52,"spinaci":23,
+        "funghi":22,"broccoli":34,"peperoni":31,"peperone":31,"piselli":81,
+        "ceci":164,"fagioli":127,"lenticchie":116,"yogurt":61,"mascarpone":420,
+        "couscous":376,"basilico":23,"prezzemolo":36,"rosmarino":131,"origano":265,
+        "noce moscata":525,"parmigiano reggiano":402,"pecorino":387,
+        "formaggio":350,"scamorza":334,"ricotta":174,"funghi":22,
+        "sedano":16,"carciofi":47,"zucca":26,"cavolfiore":25,"verza":27,
+        "melanzana":25,"pangrattato":395,"farina di mais":370
     }
+    negligible = (
+        "sale", "pepe", "acqua", "prezzemolo", "basilico", "rosmarino",
+        "origano", "salvia", "timo", "erba cipollina", "noce moscata",
+        "cannella", "paprika", "peperoncino", "menta", "alloro"
+    )
 
     def norm(value):
         value = unicodedata.normalize("NFKD", str(value).casefold())
         return "".join(ch for ch in value if not unicodedata.combining(ch))
 
-    # recipeYield può essere una stringa ("4 porzioni") oppure un numero.
     yield_text = " ".join(_as_text(v) or str(v) for v in yields) if isinstance(yields, list) else str(yields or "")
     pm = re.search(r"\d+(?:[.,]\d+)?", yield_text)
     portions = float(pm.group().replace(",", ".")) if pm else 0
@@ -244,34 +253,55 @@ def _estimate_recipe_calories(ingredients, yields):
         return None
 
     total = 0.0
+    counted = 0
     for raw in ingredients:
+        if isinstance(raw, dict):
+            raw = " ".join(str(raw.get(k, "")) for k in ("value", "unitText", "name", "text"))
         text = norm(raw)
         if not text:
             continue
-        # Condimenti trascurabili o dosati "quanto basta": non devono bloccare la stima.
-        if "q.b." in text or "quanto basta" in text or re.match(r"^(sale|pepe|acqua)\b", text):
+        if "q.b." in text or "quanto basta" in text:
             continue
+        # Spezie ed erbe senza quantità hanno un contributo calorico trascurabile.
+        if any(re.search(r"\b" + re.escape(item) + r"\b", text) for item in negligible):
+            if not re.match(r"^\s*\d", text):
+                continue
+            if re.match(r"^\s*\d+(?:[.,]\d+)?\s*(?:g|gr|grammi?)\b", text):
+                continue
+            # Quantità minime di erbe/spezie non incidono in modo apprezzabile.
+            continue
+
         m = re.match(
-            r"^\s*(\d+/\d+|\d+(?:[.,]\d+)?)\s*"
-            r"(chilogrammi?|kg|grammi?|gr?|millilitri?|ml|litri?|l|uova?|cucchiai?|cucchiaini?|bicchieri?|"
-            r"spicchi?|fette?|foglie?|rametti?)?\b", text
+            r"^\s*(\d+\s+\d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?)\s*"
+            r"(chilogrammi?|kg|grammi?|gr?|millilitri?|ml|litri?|litro|l|uova?|"
+            r"cucchiai?|cucchiaini?|bicchieri?|spicchi?|fette?|foglie?|rametti?|"
+            r"pizzichi?|pizzico|)\b", text
         )
         if not m:
             return None
-        token = m.group(1)
-        amount = (float(token.replace(",", ".")) if "/" not in token
-                  else float(token.split("/")[0]) / float(token.split("/")[1]))
+        token = m.group(1).strip()
+        if " " in token:
+            whole, fraction = token.split()
+            amount = float(whole) + float(fraction.split("/")[0]) / float(fraction.split("/")[1])
+        elif "/" in token:
+            amount = float(token.split("/")[0]) / float(token.split("/")[1])
+        else:
+            amount = float(token.replace(",", "."))
         unit = (m.group(2) or "").strip()
         rest = text[m.end():].strip(" ,.-")
         kcal = next((v for key, v in sorted(foods.items(), key=lambda item: len(item[0]), reverse=True)
                      if re.search(r"\b" + re.escape(key) + r"\b", rest)), None)
         if kcal is None:
+            # Quantità non misurabili di erbe/spezie possono essere ignorate;
+            # per gli altri ingredienti si evita una stima gravemente incompleta.
+            if any(re.search(r"\b" + re.escape(item) + r"\b", rest) for item in negligible):
+                continue
             return None
 
         if unit in ("kg", "chilogrammo", "chilogrammi", "l", "litro", "litri"):
             grams = amount * 1000
         elif unit in ("ml", "millilitro", "millilitri"):
-            grams = amount  # densità approssimata a 1 g/ml
+            grams = amount
         elif unit in ("uovo", "uova"):
             grams = amount * 60
         elif unit.startswith("cucchiaio"):
@@ -285,15 +315,17 @@ def _estimate_recipe_calories(ingredients, yields):
         elif unit.startswith("fetta"):
             grams = amount * 30
         elif unit.startswith("foglia"):
-            grams = amount * 1
+            grams = amount
         elif unit.startswith("rametto"):
             grams = amount * 2
+        elif unit.startswith("pizzich"):
+            grams = amount * 0.5
         else:
             grams = amount
         total += grams * kcal / 100
+        counted += 1
 
-    return round(total / portions)
-
+    return round(total / portions) if counted else None
 
 def extract_recipe(html: str, url: str) -> dict:
     parser = JsonLdParser()
