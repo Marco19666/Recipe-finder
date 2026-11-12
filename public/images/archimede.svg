@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+<title id="title">Archimede, il gufo chef</title>
+<desc id="desc">Un simpatico gufo marrone con cappello da cuoco e grembiule verde</desc>
+<ellipse cx="80" cy="88" rx="57" ry="63" fill="#8a512e"/>
+<path d="M31 55 21 13l42 29M129 55l10-42-42 29" fill="#8a512e" stroke="#63391f" stroke-width="4" stroke-linejoin="round"/>
+<ellipse cx="80" cy="78" rx="47" ry="45" fill="#f6dfb5"/>
+<ellipse cx="59" cy="70" rx="20" ry="23" fill="#fff"/>
+<ellipse cx="101" cy="70" rx="20" ry="23" fill="#fff"/>
+<circle cx="62" cy="72" r="9" fill="#34251c"/><circle cx="98" cy="72" r="9" fill="#34251c"/>
+<circle cx="65" cy="68" r="3" fill="#fff"/><circle cx="101" cy="68" r="3" fill="#fff"/>
+<path d="m71 94 9 13 9-13Z" fill="#e99b32"/>
+<path d="M45 38q-5-22 12-29 23-12 46 0 17 7 12 29Z" fill="#fff" stroke="#d7c5a8" stroke-width="3"/>
+<path d="M36 38h88q7 0 7 7v6H29v-6q0-7 7-7" fill="#fff" stroke="#d7c5a8" stroke-width="3"/>
+<path d="M48 119q32-17 64 0l11 37H37Z" fill="#477b70" stroke="#315b54" stroke-width="3"/>
+<path d="M65 119v18h30v-18" fill="#f6dfb5"/><path d="M71 136h18" stroke="#315b54" stroke-width="3" stroke-linecap="round"/>
+<path d="M25 104q-12 10-11 24M135 104q12 10 11 24" fill="none" stroke="#8a512e" stroke-width="9" stroke-linecap="round"/>
+</svg>
