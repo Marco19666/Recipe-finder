@@ -646,7 +646,7 @@ if(installButton){
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
 
 
-// Archimede: flusso guidato ingredienti -> categoria -> una proposta AI, senza quota durante lo sviluppo.
+// Archimede: massimo 2 consigli al giorno per dispositivo.
 const archimedeSection=document.querySelector("#archimede-section");
 const archimedeButton=document.querySelector("#show-archimede");
 const archimedeBack=document.querySelector("#archimede-back");
@@ -654,6 +654,30 @@ const archimedeForm=document.querySelector("#archimede-form");
 const archimedeIngredients=document.querySelector("#archimede-ingredients");
 const archimedeSubmit=document.querySelector("#archimede-submit");
 const archimedeResult=document.querySelector("#archimede-result");
+const ARCHIMEDE_DAILY_LIMIT=2;
+const ARCHIMEDE_QUOTA_KEY="cosa-cucino-archimede-quota-v1";
+const archimedeQuotaLabel=document.querySelector("#archimede-quota");
+function archimedeQuotaState(){
+  const today=new Date().toLocaleDateString("en-CA");
+  let state={date:today,used:0};
+  try{const saved=JSON.parse(localStorage.getItem(ARCHIMEDE_QUOTA_KEY)||"null");if(saved?.date===today&&Number.isFinite(saved.used))state={date:today,used:Math.max(0,Math.min(ARCHIMEDE_DAILY_LIMIT,saved.used))};}catch(_){}
+  return state;
+}
+function archimedeUpdateQuota(){
+  const state=archimedeQuotaState(),remaining=Math.max(0,ARCHIMEDE_DAILY_LIMIT-state.used);
+  if(archimedeQuotaLabel)archimedeQuotaLabel.textContent=remaining+" consigli disponibili oggi";
+  if(archimedeSubmit)archimedeSubmit.disabled=remaining===0;
+  return remaining;
+}
+function archimedeUseQuota(){
+  const state=archimedeQuotaState();
+  if(state.used>=ARCHIMEDE_DAILY_LIMIT)return false;
+  state.used++;
+  localStorage.setItem(ARCHIMEDE_QUOTA_KEY,JSON.stringify(state));
+  archimedeUpdateQuota();
+  return true;
+}
+archimedeUpdateQuota();
 function archimedeShow(){
   setTryRecipesVisible(false);
   for(const id of ["daily-recipe-section","results-section","favorites-section","personal-section","shopping-section","history-section","welcome","chef-section"]){
@@ -720,6 +744,7 @@ archimedeForm?.addEventListener("submit",async event=>{
   const ingredients=archimedeIngredients.value.trim();
   const category=archimedeForm.querySelector('input[name="archimede-category"]:checked')?.value||"Primo";
   if(!ingredients)return;
+  if(archimedeUpdateQuota()<=0){archimedeResult.hidden=false;archimedeResult.replaceChildren(archimedeNode("p","archimede-error","Hai già utilizzato i 2 consigli di oggi. Torna domani!"));return;}
   archimedeSubmit.disabled=true;
   archimedeSubmit.textContent="Archimede sta pensando…";
   archimedeResult.hidden=false;
@@ -730,11 +755,12 @@ archimedeForm?.addEventListener("submit",async event=>{
     let data={};try{data=raw?JSON.parse(raw):{}}catch{throw new Error("Il server ha restituito una risposta non valida.");}
     if(!response.ok)throw new Error(data.detail||"Non riesco a contattare Archimede. Riprova.");
     if(!data.recipe)throw new Error("Non ho ricevuto una ricetta completa. Riprova.");
+    archimedeUseQuota();
     archimedeRender(data.recipe);
   }catch(error){
     archimedeResult.replaceChildren(archimedeNode("p","archimede-error",error.message||"Si è verificato un errore."));
   }finally{
-    archimedeSubmit.disabled=false;
+    archimedeUpdateQuota();
     archimedeSubmit.textContent="Chiedi ad Archimede ✨";
   }
 });
