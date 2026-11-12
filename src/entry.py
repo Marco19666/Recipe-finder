@@ -320,10 +320,17 @@ def extract_recipe(html: str, url: str) -> dict:
     nutrition = recipe_data.get("nutrition")
     calories_per_serving = _calories(nutrition.get("calories")) if isinstance(nutrition, dict) else None
     calories_estimated = calories_per_serving is None
+    yield_value = recipe_data.get("recipeYield")
+    if isinstance(yield_value, list):
+        yields_text = " ".join(_as_text(value) for value in yield_value if _as_text(value))
+    elif yield_value is not None:
+        yields_text = _as_text(yield_value) or str(yield_value)
+    else:
+        yields_text = ""
     if calories_estimated:
         calories_per_serving = _estimate_recipe_calories(
             recipe_data.get("recipeIngredient") or [],
-            _as_text(recipe_data.get("recipeYield")) or None,
+            yields_text or None,
         )
 
     return {
@@ -335,7 +342,7 @@ def extract_recipe(html: str, url: str) -> dict:
         "total_time": _minutes(recipe_data.get("totalTime")),
         "prep_time": _minutes(recipe_data.get("prepTime")),
         "cook_time": _minutes(recipe_data.get("cookTime")),
-        "yields": _as_text(recipe_data.get("recipeYield")) or None,
+        "yields": yields_text or None,
         "calories_per_serving": calories_per_serving,
         "calories_estimated": bool(calories_estimated and calories_per_serving is not None),
         "source": urlparse(url).hostname,
