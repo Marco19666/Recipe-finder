@@ -402,7 +402,8 @@ async function loadRecipe(url, fallback = {}) {
       : (data.calories_estimated ? "Stima indicativa: circa " : "Valore dichiarato dalla fonte: ") + calories + " kcal per porzione · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal).";
     const meta = data.total_time ? "Tempo totale: " + data.total_time + " min" : "";
     const portions = '<div class="recipe-portions"><span>PORZIONI</span><strong>' + esc(data.yields || "Non indicate") + '</strong></div>';
-    const calorieFooter = '<div class="calorie-review"><strong>Valutazione calorica</strong><span>' + esc(calorieReview.replace(/^Valutazione calorica: /, "")) + '</span></div>';
+    const calorieStatus = calories === null ? "unknown" : (calories <= 600 ? "ok" : "over");
+    const calorieFooter = '<div class="calorie-review"><strong>Valutazione calorica</strong><span class="calorie-review-status calorie-review-status--' + calorieStatus + '">' + esc(calorieReview.replace(/^Valutazione calorica: /, "")) + '</span></div>';
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
