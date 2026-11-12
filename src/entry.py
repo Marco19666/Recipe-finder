@@ -481,7 +481,8 @@ async def chef_ask(request: Request):
         await stub.fetch("https://chef-limiter/refund?day="+day)
         raise HTTPException(status_code=503,detail="Lo chef è momentaneamente occupato. Riprova tra poco.") from exc
 
-\n@app.get("/api/health")
+
+@app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "recipe-finder"}
 
