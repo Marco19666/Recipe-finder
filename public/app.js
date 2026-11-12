@@ -340,6 +340,7 @@ function renderSearchHistory() {
   }));
 }
 function showHistory() {
+  setTryRecipesVisible(false);
   resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
   document.querySelector("#history-section").hidden = false;
   renderSearchHistory();
@@ -533,6 +534,7 @@ function renderShoppingList() {
   }));
 }
 function showShopping() {
+  setTryRecipesVisible(false);
   resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; welcomeSection.hidden = true;
   document.querySelector("#history-section").hidden = true;
   shoppingSection.hidden = false; renderShoppingList();
@@ -540,9 +542,9 @@ function showShopping() {
 shoppingCount.textContent = getShoppingItems().length;
 document.querySelector("#show-shopping").addEventListener("click", showShopping);
 document.querySelector("#show-history").addEventListener("click", showHistory);
-document.querySelector("#history-back").addEventListener("click", () => { document.querySelector("#history-section").hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#history-back").addEventListener("click", () => { document.querySelector("#history-section").hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
 document.querySelector("#history-clear").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderSearchHistory(); notify("Cronologia cancellata."); });
-document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
 document.querySelector("#shopping-clear").addEventListener("click", () => {
   saveShoppingItems([]); renderShoppingList(); notify("Lista della spesa svuotata.");
 });
