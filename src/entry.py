@@ -292,7 +292,7 @@ def _estimate_recipe_calories(ingredients, yields):
         # "uovo/uova" viene consumato come unità dalla regex, ma identifica anche l'alimento.
         kcal = 143 if unit in ("uovo", "uova") else next(
             (v for key, v in sorted(foods.items(), key=lambda item: len(item[0]), reverse=True)
-             if re.search(r"\\b" + re.escape(key) + r"\\b", rest)), None
+             if re.search(r"\b" + re.escape(key) + r"\b", rest)), None
         )
         if kcal is None:
             # Quantità non misurabili di erbe/spezie possono essere ignorate;
