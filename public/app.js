@@ -215,45 +215,75 @@ const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, char
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[char]));
 
+async function fetchSuggestion(query, dayNumber, slot, sites) {
+  const firstIndex = (dayNumber + slot * 3) % sites.length;
+  const orderedSites = [sites[firstIndex], sites[(firstIndex + 1) % sites.length]];
+  for (const site of orderedSites) {
+    try {
+      const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(site) + "&_=" + Date.now(), { cache: "no-store" });
+      if (!(response.headers.get("content-type") || "").includes("application/json")) continue;
+      const payload = await response.json();
+      if (!response.ok) continue;
+      const item = (payload.results || []).find(result => result && result.title && result.url);
+      if (item) return item;
+    } catch {}
+  }
+  return null;
+}
+function renderSuggestionCard(item, index, extraClass = "") {
+  const image = item.image
+    ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">'
+    : '<div class="result-placeholder" aria-hidden="true">✳</div>';
+  const description = esc((item.description || "Scopri ingredienti e preparazione di questa ricetta.").slice(0, 180));
+  return '<article class="result-card ' + extraClass + '">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span><h3>' + esc(item.title) + '</h3><p>' + description + '</p><div class="card-actions"><button class="recipe-button" type="button" data-suggestion-open="' + index + '">Scopri la ricetta</button></div></div></article>';
+}
+function bindSuggestionButtons(container, items) {
+  container.querySelectorAll("[data-suggestion-open]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = items[Number(button.dataset.suggestionOpen)];
+      if (item) loadRecipe(item.url, item);
+    });
+  });
+}
 async function loadDailyRecipe() {
   const dailyGrid = document.querySelector("#daily-recipe");
-  if (!dailyGrid) return;
+  const tryGrid = document.querySelector("#try-recipes");
   const dailyQueries = ["pasta al forno","pollo al limone","risotto ai funghi","parmigiana di melanzane","polpette al sugo","torta di mele","lasagne","pasta alla carbonara","frittata di verdure","tiramisù","salmone al forno","gnocchi al pomodoro","crostata","spezzatino","pasta al pesto"];
+  const tryQueries = ["cannelloni ricotta e spinaci","frittelle di zucchine","pollo alla cacciatora","risotto alla zucca","pasta alla norma","polpette di ceci","torta salata verdure","orata al forno","pasta e ceci","melanzane ripiene","gnocchi alla sorrentina","involtini di pollo","cheesecake al limone","pasta con tonno","parmigiana di zucchine","spezzatino con patate","focaccia fatta in casa","crepes ricotta spinaci","salmone in padella","crostata marmellata","riso venere verdure","lasagne vegetariane","torta yogurt","frittata patate","pollo al curry","zuppa lenticchie","pasta pomodorini burrata","polpettone al forno","biscotti fatti in casa","insalata di farro"];
   const now = new Date();
-  const dayNumber = Math.floor(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000);
-  const query = dailyQueries[((dayNumber%dailyQueries.length)+dailyQueries.length)%dailyQueries.length];
+  const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   const dailySites = ["misya.info","cookist.it","cucchiaio.it","fattoincasadabenedetta.it","ricettedellanonna.net","tavolartegusto.it"];
-  const savedChoiceKey = "recipe-finder-daily-site-v1";
-  let primarySite = "";
-  try {
-    const savedChoice = JSON.parse(localStorage.getItem(savedChoiceKey)||"null");
-    if(savedChoice&&savedChoice.day===dayNumber&&dailySites.includes(savedChoice.site)) primarySite=savedChoice.site;
-  } catch {}
-  if(!primarySite){
-    primarySite=dailySites[Math.floor(Math.random()*dailySites.length)];
-    try{localStorage.setItem(savedChoiceKey,JSON.stringify({day:dayNumber,site:primarySite}));}catch{}
+  if (dailyGrid) {
+    const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
+    dailyGrid.innerHTML = '<div class="empty-state">Sto scegliendo la ricetta di oggi...</div>';
+    const item = await fetchSuggestion(query, dayNumber, 0, dailySites);
+    if (item) {
+      dailyGrid.innerHTML = renderSuggestionCard(item, 0, "daily-recipe-card");
+      bindSuggestionButtons(dailyGrid, [item]);
+    } else {
+      dailyGrid.innerHTML = '<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
+    }
   }
-  // Prova il sito casuale del giorno e, se serve, una sola seconda fonte.
-  const fallbackSites=dailySites.filter(value=>value!==primarySite);
-  const fallbackSite=fallbackSites[Math.floor(Math.random()*fallbackSites.length)];
-  for(const site of [primarySite,fallbackSite]){
-    try{
-      const response=await fetch("/api/search?q="+encodeURIComponent(query)+"&sites="+encodeURIComponent(site)+"&_="+Date.now(),{cache:"no-store"});
-      if(!(response.headers.get("content-type")||"").includes("application/json")) continue;
-      const payload=await response.json();
-      if(!response.ok) continue;
-      const item=(payload.results||[]).find(result=>result&&result.title&&result.url);
-      if(!item) continue;
-      const image=item.image?'<img class="result-image" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" loading="eager" referrerpolicy="no-referrer">':'<div class="result-placeholder" aria-hidden="true">✳</div>';
-      const description=esc((item.description||"Scopri ingredienti e preparazione di questa ricetta.").slice(0,180));
-      dailyGrid.innerHTML='<article class="result-card daily-recipe-card">'+image+'<div class="result-body"><span class="result-source">'+esc(item.source||"Ricetta selezionata")+'</span><h3>'+esc(item.title)+'</h3><p>'+description+'</p><div class="card-actions"><button class="recipe-button" id="daily-recipe-open" type="button">Scopri la ricetta</button></div></div></article>';
-      document.querySelector("#daily-recipe-open").addEventListener("click",()=>loadRecipe(item.url,item));
-      return;
-    }catch{}
+  if (tryGrid) {
+    const startIndex = (dayNumber * 5) % tryQueries.length;
+    const queries = Array.from({ length: 5 }, (_, index) => tryQueries[(startIndex + index) % tryQueries.length]);
+    tryGrid.innerHTML = '<div class="empty-state">Sto preparando 5 idee diverse da provare oggi...</div>';
+    const found = await Promise.all(queries.map((query, index) => fetchSuggestion(query, dayNumber, index + 1, dailySites)));
+    const unique = [];
+    const seen = new Set();
+    found.forEach(item => {
+      if (!item) return;
+      const key = String(item.url).replace(/#.*$/, "").toLowerCase();
+      if (!seen.has(key)) { seen.add(key); unique.push(item); }
+    });
+    tryGrid.innerHTML = unique.length
+      ? unique.map((item, index) => renderSuggestionCard(item, index, "try-recipe-card")).join("")
+      : '<div class="empty-state">Le idee di oggi non sono disponibili in questo momento. Riprova tra poco.</div>';
+    bindSuggestionButtons(tryGrid, unique);
+    const count = document.querySelector("#try-recipes-count");
+    if (count) count.textContent = unique.length + " idee di oggi";
   }
-  dailyGrid.innerHTML='<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
 }
-
 function notify(message, duration = 3200) {
   toast.textContent = message;
   toast.classList.add("show");
