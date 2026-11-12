@@ -86,6 +86,12 @@ const personalSection = document.querySelector("#personal-section");
 const personalGrid = document.querySelector("#personal-grid");
 const personalButton = document.querySelector("#show-personal");
 const personalCount = document.querySelector("#personal-count");
+function setTryRecipesVisible(visible) {
+  const section = document.querySelector(".try-recipes-section");
+  if (!section) return;
+  section.hidden = !visible;
+  section.style.display = visible ? "" : "none";
+}
 const PERSONAL_KEY = "recipe-finder-personal-recipes-v1";
 const FAVORITES_KEY = "recipe-finder-favorites-v1";
 const SHOPPING_KEY = "recipe-finder-shopping-list-v1";
@@ -101,7 +107,7 @@ siteCheckboxes.forEach(input => input.addEventListener("change", () => { allSite
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
-  document.querySelector(".try-recipes-section").hidden = true;
+  setTryRecipesVisible(false);
   resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true; document.querySelector("#history-section").hidden = true;
   personalSection.hidden = false;
   document.querySelector('#personal-form').hidden = true;
@@ -550,7 +556,7 @@ document.querySelector('#personal-add').addEventListener('click', () => {
   document.querySelector('#personal-add').hidden = true;
   document.querySelector('#personal-title').focus();
 });
-document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; document.querySelector(".try-recipes-section").hidden = false; });
+document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
 document.querySelector("#personal-form").addEventListener("submit", async event => {
   event.preventDefault();
   const title = document.querySelector("#personal-title").value.trim();
