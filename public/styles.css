@@ -296,3 +296,32 @@ body[data-theme="dark"] .site-chooser legend {
     margin-bottom: 9px;
   }
 }
+
+/* Titolo separato dal bordo: evita sovrapposizioni della legenda nativa. */
+.site-chooser {
+  display: block;
+  min-width: 0;
+  margin: 20px auto 22px;
+  padding: 16px 18px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.site-chooser-title {
+  display: block;
+  position: static;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.site-chooser .site-all { margin-bottom: 8px; }
+body[data-theme="dark"] .site-chooser { background: var(--card); border-color: var(--line); }
+body[data-theme="dark"] .site-chooser-title { color: var(--green); }
+@media (max-width: 520px) {
+  .site-chooser { margin: 18px 0 18px; padding: 15px 13px 16px; }
+  .site-chooser-title { margin-bottom: 11px; }
+}
