@@ -3,6 +3,8 @@ const themeToggle = document.querySelector("#theme-toggle");
 const wakeToggle = document.querySelector("#wake-toggle");
 const THEME_KEY = "recipe-finder-theme-v1";
 const WAKE_KEY = "recipe-finder-wake-lock-v1";
+let wakeLock = null;
+let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
 function applyTheme(theme) {
   const dark = theme === "dark";
   document.body.dataset.theme = dark ? "dark" : "light";
@@ -20,8 +22,6 @@ themeToggle?.addEventListener("click", () => {
   localStorage.setItem(THEME_KEY, next);
   applyTheme(next);
 });
-let wakeLock = null;
-let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
 function syncThemeButtonBackground() {
   if (!themeToggle || !wakeToggle) return;
   themeToggle.classList.toggle("is-active", wakeEnabled);
