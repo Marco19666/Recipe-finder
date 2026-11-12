@@ -459,7 +459,10 @@ async def chef_ask(request: Request):
     for item in messages:
         if not isinstance(item,dict) or item.get("role") not in ("user","assistant"): continue
         content=str(item.get("content") or "").strip()
-        if not content or len(content)>700: raise HTTPException(status_code=400, detail="Messaggio non valido.")
+        # Il limite breve vale per le domande dell'utente; le risposte dello
+        # chef possono essere più articolate e restare nel contesto.
+        max_length = 700 if item["role"] == "user" else 4000
+        if not content or len(content)>max_length: raise HTTPException(status_code=400, detail="Messaggio non valido.")
         clean.append({"role":item["role"],"content":content})
     if not clean or clean[-1]["role"]!="user": raise HTTPException(status_code=400, detail="La domanda non è valida.")
     if not _chef_is_cooking_topic(clean):
