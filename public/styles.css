@@ -811,3 +811,39 @@ body[data-theme="dark"] button#wake-toggle:hover {
   background-color: #cfe3c6 !important;
   border-color: #a8c79d !important;
 }
+
+
+/* Tema non deve alterare mai lo sfondo dei pulsanti Wake Up e Installa app. */
+body:not([data-theme="dark"]) button#wake-toggle,
+body[data-theme="dark"] button#wake-toggle,
+body:not([data-theme="dark"]) button#wake-toggle:hover,
+body[data-theme="dark"] button#wake-toggle:hover,
+body:not([data-theme="dark"]) button#wake-toggle:active,
+body[data-theme="dark"] button#wake-toggle:active,
+body:not([data-theme="dark"]) button#wake-toggle:focus,
+body[data-theme="dark"] button#wake-toggle:focus,
+body:not([data-theme="dark"]) button#wake-toggle:focus-visible,
+body[data-theme="dark"] button#wake-toggle:focus-visible {
+  background: #dcebd5 !important;
+  background-color: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
+}
+body:not([data-theme="dark"]) button#install-app,
+body[data-theme="dark"] button#install-app,
+body:not([data-theme="dark"]) button#install-app:hover,
+body[data-theme="dark"] button#install-app:hover,
+body:not([data-theme="dark"]) button#install-app:active,
+body[data-theme="dark"] button#install-app:active,
+body:not([data-theme="dark"]) button#install-app:focus,
+body[data-theme="dark"] button#install-app:focus,
+body:not([data-theme="dark"]) button#install-app:focus-visible,
+body[data-theme="dark"] button#install-app:focus-visible {
+  background: #3f6245 !important;
+  background-color: #3f6245 !important;
+  border-color: #3f6245 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: none !important;
+}
