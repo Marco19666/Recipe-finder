@@ -774,3 +774,17 @@ body[data-theme="dark"] button#theme-toggle.is-active {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+
+/* Il pulsante "Torna alla home" resta verde chiaro anche in tema scuro. */
+.back-home-button,
+body[data-theme="dark"] .back-home-button {
+  background: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
+}
+.back-home-button:hover,
+body[data-theme="dark"] .back-home-button:hover {
+  background: #cfe3c6 !important;
+  border-color: #a8c79d !important;
+}
