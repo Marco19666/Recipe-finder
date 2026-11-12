@@ -12,9 +12,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=26">
+  <link rel="stylesheet" href="/styles.css?v=27">
 </head>
 <body>
+  <div id="app-splash" class="app-splash" role="status" aria-live="polite" aria-label="Caricamento di Cosa Cucino?">
+    <div class="splash-content"><span class="splash-mark" aria-hidden="true">C</span><div class="splash-name">Cosa Cucino<span>?</span></div><p>Stiamo preparando la tua cucina...</p><span class="splash-loader" aria-hidden="true"><i></i><i></i><i></i></span></div>
+  </div>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Cosa Cucino? home"><span class="brand-mark">C</span><span>Cosa Cucino<span class="brand-dot">?</span></span></a>
     <div class="top-actions"><span class="top-note">Ispirazione, ogni giorno</span><button id="theme-toggle" class="utility-toggle" type="button" aria-pressed="false">☾ Tema scuro</button><button id="wake-toggle" class="utility-toggle" type="button" aria-pressed="false">♧ Schermo sempre acceso</button><button id="install-app" class="install-app-button" type="button">＋ Installa app</button></div>
@@ -101,6 +104,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>Cosa Cucino?</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=30" defer></script>
+  <script src="/app.js?v=31" defer></script>
 </body>
 </html>
