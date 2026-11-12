@@ -689,3 +689,11 @@ body[data-theme="dark"] .archimede-error{color:#ff9b91}
 body[data-theme="dark"] button#wake-toggle,
 body[data-theme="dark"] button#wake-toggle.is-active,
 body[data-theme="dark"] button#wake-toggle[aria-pressed="true"] { color: #000 !important; -webkit-text-fill-color: #000 !important; }
+
+/* In tema scuro, il pulsante inattivo mantiene il verde chiaro degli altri pulsanti. */
+body[data-theme="dark"] button#wake-toggle:not(.is-active) {
+  background: #edf1e9 !important;
+  border-color: #d8e0d4 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
