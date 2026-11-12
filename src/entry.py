@@ -420,7 +420,7 @@ class ChefDailyLimiter(DurableObject):
     def fetch(self, request):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(request.url); day = (parse_qs(parsed.query).get("day") or [""])[0]
-        if not day: return WorkerWorkerResponse.json({"error":"missing day"}, status=400)
+        if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
         count = int(row.count)
         if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,3-count)})
