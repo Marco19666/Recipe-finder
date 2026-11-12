@@ -364,3 +364,122 @@ body[data-theme="dark"] .site-chooser-title { color: var(--green); }
 }
 .calorie-review strong { color: var(--green-dark); font-size: 14px; }
 .calorie-review span { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+
+/* Contrasto della valutazione calorica e leggibilità completa in tema scuro. */
+.calorie-review-status {
+  display: block;
+  font-weight: 700;
+}
+.calorie-review-status--ok { color: #26743a !important; }
+.calorie-review-status--over { color: #c62828 !important; }
+.calorie-review-status--unknown { color: var(--muted) !important; }
+
+body[data-theme="dark"] {
+  --ink: #f3f4ef;
+  --muted: #c0c8bd;
+  --paper: #141914;
+  --card: #222a23;
+  --green: #b4d5ad;
+  --green-dark: #c8e5c1;
+  --line: #465247;
+  --orange: #f0ad83;
+  background: var(--paper);
+  color: var(--ink);
+}
+body[data-theme="dark"] .topbar,
+body[data-theme="dark"] .personal-form,
+body[data-theme="dark"] .shopping-list,
+body[data-theme="dark"] .site-chooser,
+body[data-theme="dark"] .welcome,
+body[data-theme="dark"] .recipe-panel,
+body[data-theme="dark"] .result-card,
+body[data-theme="dark"] .calorie-review,
+body[data-theme="dark"] .recipe-portions {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .hero-copy,
+body[data-theme="dark"] .welcome p,
+body[data-theme="dark"] .result-card p,
+body[data-theme="dark"] .recipe-meta,
+body[data-theme="dark"] .recipe-panel li,
+body[data-theme="dark"] .shopping-hint,
+body[data-theme="dark"] .shopping-item,
+body[data-theme="dark"] .recipe-portions span,
+body[data-theme="dark"] .calorie-review span:not(.calorie-review-status),
+body[data-theme="dark"] .top-note,
+body[data-theme="dark"] .result-count,
+body[data-theme="dark"] footer {
+  color: var(--muted);
+}
+body[data-theme="dark"] .result-card h3,
+body[data-theme="dark"] .recipe-panel h2,
+body[data-theme="dark"] .personal-form h3,
+body[data-theme="dark"] .personal-list-title,
+body[data-theme="dark"] .recipe-panel h3 {
+  color: var(--ink);
+}
+body[data-theme="dark"] .personal-form input,
+body[data-theme="dark"] .personal-form textarea,
+body[data-theme="dark"] .personal-form select,
+body[data-theme="dark"] .personal-tools input,
+body[data-theme="dark"] .personal-tools select,
+body[data-theme="dark"] .favorite-category,
+body[data-theme="dark"] .favorite-category-choice,
+body[data-theme="dark"] .favorite-category-choice select,
+body[data-theme="dark"] .favorite-category-choice label,
+body[data-theme="dark"] .search-form,
+body[data-theme="dark"] .search-form input,
+body[data-theme="dark"] .site-chooser,
+body[data-theme="dark"] .shopping-list,
+body[data-theme="dark"] .close-button {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .recipe-button,
+body[data-theme="dark"] .shopping-add,
+body[data-theme="dark"] .favorites-home-button,
+body[data-theme="dark"] .back-home-button,
+body[data-theme="dark"] .favorite-toggle {
+  background: #303d31;
+  color: #e8f2e5;
+  border-color: #607861;
+}
+body[data-theme="dark"] .recipe-button:hover,
+body[data-theme="dark"] .shopping-add:hover,
+body[data-theme="dark"] .favorites-home-button:hover,
+body[data-theme="dark"] .back-home-button:hover {
+  background: #3a4b3b;
+}
+body[data-theme="dark"] .recipe-panel .source-visit,
+body[data-theme="dark"] .search-form button {
+  background: #8fb68b;
+  color: #142016;
+}
+body[data-theme="dark"] .recipe-portions strong,
+body[data-theme="dark"] .calorie-review strong,
+body[data-theme="dark"] .site-chooser-title,
+body[data-theme="dark"] .site-option,
+body[data-theme="dark"] .eyebrow,
+body[data-theme="dark"] .result-source,
+body[data-theme="dark"] .text-link {
+  color: var(--green);
+}
+body[data-theme="dark"] .calorie-review-status--ok { color: #79d58b !important; }
+body[data-theme="dark"] .calorie-review-status--over { color: #ff8585 !important; }
+body[data-theme="dark"] .calorie-review-status--unknown { color: var(--muted) !important; }
+body[data-theme="dark"] .empty-state,
+body[data-theme="dark"] .error-state {
+  background: var(--card);
+  color: var(--muted);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .close-button {
+  color: var(--ink);
+}
+body[data-theme="dark"] .favorite-remove {
+  color: #ff9b91;
+}
