@@ -253,7 +253,7 @@ def _estimate_recipe_calories(ingredients, yields):
             continue
         m = re.match(
             r"^\s*(\d+/\d+|\d+(?:[.,]\d+)?)\s*"
-            r"(kg|gr?|ml|l|litri?|uovo|uova|cucchiai?|cucchiaini?|bicchieri?|"
+            r"(chilogrammi?|kg|grammi?|gr?|millilitri?|ml|litri?|l|uova?|cucchiai?|cucchiaini?|bicchieri?|"
             r"spicchi?|fette?|foglie?|rametti?)?\b", text
         )
         if not m:
