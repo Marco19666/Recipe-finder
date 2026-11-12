@@ -421,8 +421,8 @@ class ChefDailyLimiter(DurableObject):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(request.url); day = (parse_qs(parsed.query).get("day") or [""])[0]
         if not day: return Response.json({"error":"missing day"}, status=400)
-        row = self.ctx.storage.sql.exec("SELECT count FROM daily_usage WHERE day = ?", day).one()
-        count = int(row.count) if row else 0
+        row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
+        count = int(row.count)
         if parsed.path == "/status": return Response.json({"remaining":max(0,3-count)})
         if parsed.path == "/refund":
             if count > 0: self.ctx.storage.sql.exec("UPDATE daily_usage SET count=count-1 WHERE day=?", day)
@@ -438,8 +438,9 @@ def _chef_js(value):
 async def chef_status(request: Request, device_id: str = Query(min_length=16, max_length=100)):
     import re
     if not re.fullmatch(r"[A-Za-z0-9-]{16,100}", device_id): raise HTTPException(status_code=400, detail="Identificativo dispositivo non valido.")
-    from datetime import datetime, timezone
-    env=request.scope["env"]; day=datetime.now(timezone.utc).date().isoformat()
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
     stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
     response=await stub.fetch("https://chef-limiter/status?day="+day)
     return await response.json()
@@ -461,8 +462,9 @@ async def chef_ask(request: Request):
     if not clean or clean[-1]["role"]!="user": raise HTTPException(status_code=400, detail="La domanda non è valida.")
     if not _chef_is_cooking_topic(clean):
         return {"answer":"Posso aiutarti soltanto con argomenti di cucina: ricette, ingredienti, tecniche e consigli ai fornelli. Qual è il piatto che vuoi preparare?","remaining":None,"off_topic":True}
-    from datetime import datetime, timezone
-    env=request.scope["env"]; day=datetime.now(timezone.utc).date().isoformat()
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
     stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
     quota_response=await stub.fetch("https://chef-limiter/consume?day="+day)
     quota=await quota_response.json()
