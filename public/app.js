@@ -596,7 +596,25 @@ document.addEventListener("keydown", event => {
 });
 
 
-loadDailyRecipe();
+const splash = document.querySelector("#app-splash");
+let splashDismissed = false;
+function dismissSplash() {
+  if (splashDismissed || !splash) return;
+  splashDismissed = true;
+  splash.classList.add("is-hidden");
+  window.setTimeout(() => splash.remove(), 400);
+}
+const splashFailsafe = window.setTimeout(dismissSplash, 15000);
+loadDailyRecipe().catch(error => {
+  console.error("Errore nel caricamento dei suggerimenti iniziali:", error);
+}).finally(() => {
+  const finishSplash = () => {
+    window.clearTimeout(splashFailsafe);
+    dismissSplash();
+  };
+  if (document.readyState === "complete") finishSplash();
+  else window.addEventListener("load", finishSplash, { once: true });
+});
 
 let deferredInstallPrompt=null;
 const installButton=document.querySelector("#install-app");
