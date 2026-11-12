@@ -593,3 +593,14 @@ body[data-theme="dark"] .splash-content p{color:var(--text-secondary)}
 .chef-note{margin:0;padding:0 18px 16px;background:var(--card);color:var(--muted);font-size:11px;line-height:1.5}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body[data-theme="dark"] .chef-intro{background:linear-gradient(120deg,#29392a,#30342b)}body[data-theme="dark"] .chef-intro h3{color:#f0f3eb}body[data-theme="dark"] .chef-intro p{color:#c6d0c3}body[data-theme="dark"] .chef-quota{background:#202a20;color:#c8e5c1}
 @media(max-width:600px){.chef-section{padding:18px 16px 32px}.chef-intro{align-items:flex-start;gap:14px;padding:18px}.chef-avatar{flex-basis:76px;width:76px;height:76px}.chef-avatar svg{width:76px;height:76px}.chef-intro h3{font-size:21px}.chef-messages{padding:14px;min-height:160px}.chef-form{padding:12px;gap:8px}.chef-form button{padding:0 13px}.chef-message{max-width:94%}}
+
+/* Evidenzia l'accesso allo chef senza mostrare la quota nella home. */
+.chef-home-button{display:inline-flex;align-items:center;gap:13px;min-width:min(330px,100%);padding:13px 18px;border:2px solid var(--green);border-radius:14px;background:linear-gradient(115deg,#355b3b,#527b50);color:#fff;text-align:left;cursor:pointer;box-shadow:0 8px 22px #304c352e;transition:transform .18s,box-shadow .18s,background .18s}
+.chef-home-button:hover{transform:translateY(-2px);box-shadow:0 12px 26px #304c3540;background:linear-gradient(115deg,#294b30,#496f47)}
+.chef-home-icon{display:grid;place-items:center;flex:0 0 43px;width:43px;height:43px;border-radius:50%;background:#ffffff24;font-size:25px}
+.chef-home-copy{display:flex;flex-direction:column;gap:3px;flex:1}
+.chef-home-copy strong{font:700 15px "DM Sans"}
+.chef-home-copy small{font:500 10px/1.4 "DM Sans";color:#e4eddf}
+.chef-home-arrow{font-size:22px;font-weight:700}
+@media(max-width:520px){.chef-home-button{min-width:100%;justify-content:flex-start;padding:12px 15px}.home-actions{gap:9px}}
+body[data-theme="dark"] .chef-home-button{border-color:#789c70;background:linear-gradient(115deg,#294b30,#416844)}
