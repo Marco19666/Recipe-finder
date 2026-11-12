@@ -683,3 +683,7 @@ body[data-theme="dark"] .archimede-error{color:#ff9b91}
 /* Archimede mascot: shared image in home button and assistant panel */
 .archimede-home-icon{overflow:hidden;padding:0}
 .archimede-home-icon img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+
+/* In tema scuro, la scritta Schermo sempre acceso resta nera. */
+body[data-theme="dark"] #wake-toggle { color: #000 !important; }
