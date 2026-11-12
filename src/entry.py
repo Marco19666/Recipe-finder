@@ -228,7 +228,7 @@ def _estimate_recipe_calories(ingredients, yields):
         text = norm(raw)
         if any(term in text for term in ("q.b.", "quanto basta", "sale", "pepe", "acqua")):
             continue
-        m = re.match(r"^\s*(\d+(?:[.,]\d+)?|\d+/\d+)\s*(kg|g|gr|ml|l|litri?|uova?|cucchiai?|cucchiaini?|bicchieri?)?\b", text)
+        m = re.match(r"^\s*(\d+/\d+|\d+(?:[.,]\d+)?)\s*(kg|g|gr|ml|l|litri?|uova?|cucchiai?|cucchiaini?|bicchieri?)?\b", text)
         if not m:
             return None
         token = m.group(1)
@@ -273,7 +273,8 @@ def extract_recipe(html: str, url: str) -> dict:
 
     nutrition = recipe_data.get("nutrition")
     calories_per_serving = _calories(nutrition.get("calories")) if isinstance(nutrition, dict) else None
-    if calories_per_serving is None:
+    calories_estimated = calories_per_serving is None
+    if calories_estimated:
         calories_per_serving = _estimate_recipe_calories(
             recipe_data.get("recipeIngredient") or [],
             _as_text(recipe_data.get("recipeYield")) or None,
@@ -290,6 +291,7 @@ def extract_recipe(html: str, url: str) -> dict:
         "cook_time": _minutes(recipe_data.get("cookTime")),
         "yields": _as_text(recipe_data.get("recipeYield")) or None,
         "calories_per_serving": calories_per_serving,
+        "calories_estimated": bool(calories_estimated and calories_per_serving is not None),
         "source": urlparse(url).hostname,
         "url": recipe_data.get("url") or url,
     }
