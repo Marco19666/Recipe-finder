@@ -423,13 +423,13 @@ class ChefDailyLimiter(DurableObject):
         if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
         count = int(row.count)
-        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,3-count)})
+        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,5-count)})
         if parsed.path == "/refund":
             if count > 0: self.ctx.storage.sql.exec("UPDATE daily_usage SET count=count-1 WHERE day=?", day)
-            return WorkerResponse.json({"remaining":min(3,4-count)})
-        if count >= 3: return WorkerResponse.json({"remaining":0}, status=429)
+            return WorkerResponse.json({"remaining":min(5,6-count)})
+        if count >= 5: return WorkerResponse.json({"remaining":0}, status=429)
         self.ctx.storage.sql.exec("INSERT INTO daily_usage(day,count) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET count=count+1", day)
-        return WorkerResponse.json({"remaining":2-count})
+        return WorkerResponse.json({"remaining":4-count})
 
 def _chef_js(value):
     return to_js(value, dict_converter=Object.fromEntries)
@@ -440,8 +440,12 @@ async def chef_status(request: Request, device_id: str = Query(min_length=16, ma
     if not re.fullmatch(r"[A-Za-z0-9-]{16,100}", device_id): raise HTTPException(status_code=400, detail="Identificativo dispositivo non valido.")
     from datetime import datetime
     from zoneinfo import ZoneInfo
-    # Durante la fase di test le domande sono illimitate: il contatore giornaliero è sospeso.
-    return {"remaining":None,"unlimited":True}
+    env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
+    stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
+    response=await stub.fetch("https://chef-limiter/status?day="+day)
+    data=await response.json()
+    remaining=data.get("remaining",0) if isinstance(data,dict) else getattr(data,"remaining",0)
+    return {"remaining":int(remaining),"limit":5}
 
 @app.post("/api/chef/ask")
 async def chef_ask(request: Request):
@@ -464,7 +468,14 @@ async def chef_ask(request: Request):
     if not _chef_is_cooking_topic(clean):
         return {"answer":"Posso aiutarti soltanto con argomenti di cucina: ricette, ingredienti, tecniche e consigli ai fornelli. Qual è il piatto che vuoi preparare?","remaining":None,"off_topic":True}
     env=request.scope["env"]
-    # Limite giornaliero disattivato temporaneamente durante i test.
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
+    stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
+    quota_response=await stub.fetch("https://chef-limiter/consume?day="+day)
+    quota=await quota_response.json()
+    if quota_response.status==429:
+        raise HTTPException(status_code=429,detail="Hai raggiunto le 5 domande di oggi. Torna domani!")
     try:
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":450,"temperature":0.55,"chat_template_kwargs":{"enable_thinking":False}}))
         def result_field(value, key, default=None):
@@ -487,8 +498,10 @@ async def chef_ask(request: Request):
             answer="".join(str(result_field(part,"text","")) for part in answer)
         if not isinstance(answer,str) or not answer.strip():
             raise RuntimeError("Workers AI ha restituito una risposta senza testo.")
-        return {"answer":answer.strip(),"remaining":None}
+        remaining=quota.get("remaining",0) if isinstance(quota,dict) else getattr(quota,"remaining",0)
+        return {"answer":answer.strip(),"remaining":int(remaining)}
     except Exception as exc:
+        await stub.fetch("https://chef-limiter/refund?day="+day)
         raise HTTPException(status_code=503,detail="Lo chef è momentaneamente occupato. Riprova tra poco.") from exc
 
 
