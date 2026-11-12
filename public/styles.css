@@ -325,3 +325,42 @@ body[data-theme="dark"] .site-chooser-title { color: var(--green); }
   .site-chooser { margin: 18px 0 18px; padding: 15px 13px 16px; }
   .site-chooser-title { margin-bottom: 11px; }
 }
+
+
+/* Informazioni chiave nella scheda ricetta */
+.recipe-portions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 20px 0 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: 11px;
+  background: var(--card);
+  color: var(--ink);
+}
+.recipe-portions span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.recipe-portions strong {
+  color: var(--green-dark);
+  font-size: 18px;
+  text-align: right;
+}
+.calorie-review {
+  display: grid;
+  gap: 6px;
+  margin: 24px 0 4px;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+  color: var(--ink);
+}
+.calorie-review strong { color: var(--green-dark); font-size: 14px; }
+.calorie-review span { color: var(--muted); font-size: 13px; line-height: 1.5; }
