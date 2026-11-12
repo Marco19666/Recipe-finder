@@ -396,7 +396,7 @@ async function loadRecipe(url, fallback = {}) {
     if (!response.ok) throw new Error(data.detail || "Non è stato possibile leggere la ricetta.");
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
     const instructions = Array.isArray(data.instructions) ? data.instructions : [data.instructions].filter(Boolean);
-    const calories = Number.isFinite(Number(data.calories_per_serving)) ? Number(data.calories_per_serving) : null;
+    const calories = data.calories_per_serving !== null && data.calories_per_serving !== undefined && data.calories_per_serving !== "" && Number.isFinite(Number(data.calories_per_serving)) ? Number(data.calories_per_serving) : null;
     const calorieReview = calories === null
       ? "Valutazione calorica: dati non disponibili"
       : "Calorie per porzione: " + calories + " kcal · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal)";
