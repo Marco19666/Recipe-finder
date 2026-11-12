@@ -473,7 +473,7 @@ async def chef_ask(request: Request):
     if quota_response.status==429: raise HTTPException(status_code=429,detail="Hai raggiunto le 3 domande di oggi. Torna domani!",headers={"X-Chef-Remaining":"0"})
     try:
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":550,"temperature":0.55}))
-        answer=result.get("response") if hasattr(result,"get") else None
+        answer=result.get("response") if isinstance(result,dict) else getattr(result,"response",None)
         if not answer: answer=str(result)
         remaining=quota.get("remaining",0) if isinstance(quota,dict) else getattr(quota,"remaining",0)
         return {"answer":str(answer).strip(),"remaining":int(remaining)}
