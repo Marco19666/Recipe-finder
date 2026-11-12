@@ -230,12 +230,13 @@ async function fetchSuggestion(query, dayNumber, slot, sites) {
   }
   return null;
 }
-function renderSuggestionCard(item, index, extraClass = "") {
+function renderSuggestionCard(item, index, extraClass = "", category = "") {
   const image = item.image
     ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">'
     : '<div class="result-placeholder" aria-hidden="true">✳</div>';
   const description = esc((item.description || "Scopri ingredienti e preparazione di questa ricetta.").slice(0, 180));
-  return '<article class="result-card ' + extraClass + '">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span><h3>' + esc(item.title) + '</h3><p>' + description + '</p><div class="card-actions"><button class="recipe-button" type="button" data-suggestion-open="' + index + '">Scopri la ricetta</button></div></div></article>';
+  const categoryLabel = category ? '<span class="suggestion-category">' + esc(category) + '</span>' : '';
+  return '<article class="result-card ' + extraClass + '">' + image + '<div class="result-body">' + categoryLabel + '<span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span><h3>' + esc(item.title) + '</h3><p>' + description + '</p><div class="card-actions"><button class="recipe-button" type="button" data-suggestion-open="' + index + '">Scopri la ricetta</button></div></div></article>';
 }
 function bindSuggestionButtons(container, items) {
   container.querySelectorAll("[data-suggestion-open]").forEach(button => {
@@ -265,28 +266,39 @@ async function loadDailyRecipe() {
     }
   }
   if (tryGrid) {
-    const startIndex = dayNumber % tryQueries.length;
-    const queries = Array.from({ length: 5 }, (_, index) => tryQueries[(startIndex + index) % tryQueries.length]);
-    tryGrid.innerHTML = '<div class="empty-state">Sto preparando 5 idee diverse da provare oggi...</div>';
-    const found = await Promise.all(queries.map((query, index) => fetchSuggestion(query, dayNumber, index + 1, dailySites)));
-    const unique = [];
+    const tryCategories = [
+      { label: "Antipasto", queries: ["bruschette pomodoro", "crostini sfiziosi", "involtini di melanzane", "frittelle salate"] },
+      { label: "Primo", queries: ["risotto ai funghi", "pasta alla norma", "lasagne vegetariane", "pasta al pesto"] },
+      { label: "Secondo", queries: ["pollo alla cacciatora", "polpette al sugo", "orata al forno", "polpettone al forno"] },
+      { label: "Contorno", queries: ["patate al forno", "verdure gratinate", "zucchine trifolate", "melanzane grigliate"] },
+      { label: "Dolce", queries: ["crostata alla marmellata", "torta di mele", "cheesecake al limone", "tiramisù"] }
+    ];
+    tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
+    const choices = tryCategories.map((category, index) => ({
+      ...category,
+      query: category.queries[Math.floor(dayNumber / 5 + index * 7) % category.queries.length]
+    }));
+    const found = await Promise.all(choices.map((category, index) =>
+      fetchSuggestion(category.query, dayNumber, index + 1, dailySites)
+    ));
     const seen = new Set();
-    found.forEach(item => {
-      if (!item) return;
+    const suggestions = choices.map((category, index) => {
+      const item = found[index];
+      if (!item) return { category: category.label, item: null };
       const urlKey = String(item.url).replace(/#.*$/, "").toLowerCase();
       const titleKey = String(item.title || "").trim().toLocaleLowerCase("it");
-      if (!seen.has(urlKey) && !seen.has(titleKey)) {
-        seen.add(urlKey);
-        seen.add(titleKey);
-        unique.push(item);
-      }
+      if (seen.has(urlKey) || seen.has(titleKey)) return { category: category.label, item: null };
+      seen.add(urlKey);
+      seen.add(titleKey);
+      return { category: category.label, item };
     });
-    tryGrid.innerHTML = unique.length
-      ? unique.map((item, index) => renderSuggestionCard(item, index, "try-recipe-card")).join("")
-      : '<div class="empty-state">Le idee di oggi non sono disponibili in questo momento. Riprova tra poco.</div>';
-    bindSuggestionButtons(tryGrid, unique);
+    tryGrid.innerHTML = suggestions.map((entry, index) => entry.item
+      ? renderSuggestionCard(entry.item, index, "try-recipe-card", entry.category)
+      : '<article class="result-card try-recipe-card suggestion-unavailable"><div class="result-placeholder" aria-hidden="true">✳</div><div class="result-body"><span class="suggestion-category">' + esc(entry.category) + '</span><h3>Ricetta non disponibile</h3><p>Oggi non è stato possibile trovare una proposta per questa portata.</p></div></article>'
+    ).join("");
+    bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
     const count = document.querySelector("#try-recipes-count");
-    if (count) count.textContent = unique.length + " idee di oggi";
+    if (count) count.textContent = "Menu completo · 5 portate";
   }
 }
 function notify(message, duration = 3200) {
