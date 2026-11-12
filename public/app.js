@@ -101,6 +101,7 @@ siteCheckboxes.forEach(input => input.addEventListener("change", () => { allSite
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
+  document.querySelector(".try-recipes-section").hidden = true;
   resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true; document.querySelector("#history-section").hidden = true;
   personalSection.hidden = false;
   document.querySelector('#personal-form').hidden = true;
@@ -166,7 +167,7 @@ function toggleFavorite(item) {
   saveFavorites(exists ? items.filter(saved => saved.url !== item.url) : [item, ...items]);
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
-function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; document.querySelector("#history-section").hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function showFavorites() { document.querySelector(".try-recipes-section").hidden = true; resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; document.querySelector("#history-section").hidden = true; favoritesSection.hidden = false; renderFavorites(); }
 function renderFavoriteReview(item, index) {
   const rating = Math.max(0, Math.min(5, Number(item.rating) || 0));
   const stars = [1,2,3,4,5].map(value =>
@@ -549,7 +550,7 @@ document.querySelector('#personal-add').addEventListener('click', () => {
   document.querySelector('#personal-add').hidden = true;
   document.querySelector('#personal-title').focus();
 });
-document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; document.querySelector(".try-recipes-section").hidden = false; });
 document.querySelector("#personal-form").addEventListener("submit", async event => {
   event.preventDefault();
   const title = document.querySelector("#personal-title").value.trim();
@@ -573,7 +574,7 @@ document.querySelector("#personal-form").addEventListener("submit", async event 
 favoritesButton.addEventListener("click", showFavorites);
 document.querySelector("#favorites-search").addEventListener("input", renderFavorites);
 document.querySelector("#favorites-category-filter").addEventListener("change", renderFavorites);
-document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; document.querySelector(".try-recipes-section").hidden = false; });
 form.addEventListener("submit", event => {
   event.preventDefault();
   const query = queryInput.value.trim();
