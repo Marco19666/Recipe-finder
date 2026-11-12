@@ -443,7 +443,9 @@ async def chef_status(request: Request, device_id: str = Query(min_length=16, ma
     env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
     stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
     response=await stub.fetch("https://chef-limiter/status?day="+day)
-    return await response.json()
+    data=await response.json()
+    remaining=data.get("remaining",0) if isinstance(data,dict) else getattr(data,"remaining",0)
+    return {"remaining":int(remaining)}
 
 @app.post("/api/chef/ask")
 async def chef_ask(request: Request):
@@ -473,7 +475,8 @@ async def chef_ask(request: Request):
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":550,"temperature":0.55}))
         answer=result.get("response") if hasattr(result,"get") else None
         if not answer: answer=str(result)
-        return {"answer":str(answer).strip(),"remaining":int(quota.get("remaining",0))}
+        remaining=quota.get("remaining",0) if isinstance(quota,dict) else getattr(quota,"remaining",0)
+        return {"answer":str(answer).strip(),"remaining":int(remaining)}
     except Exception as exc:
         await stub.fetch("https://chef-limiter/refund?day="+day)
         raise HTTPException(status_code=503,detail="Lo chef è momentaneamente occupato. Riprova tra poco.") from exc
