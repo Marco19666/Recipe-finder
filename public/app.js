@@ -250,7 +250,6 @@ async function loadDailyRecipe() {
   const dailyGrid = document.querySelector("#daily-recipe");
   const tryGrid = document.querySelector("#try-recipes");
   const dailyQueries = ["pasta al forno","pollo al limone","risotto ai funghi","parmigiana di melanzane","polpette al sugo","torta di mele","lasagne","pasta alla carbonara","frittata di verdure","tiramisù","salmone al forno","gnocchi al pomodoro","crostata","spezzatino","pasta al pesto"];
-  const tryQueries = ["cannelloni ricotta e spinaci","frittelle di zucchine","pollo alla cacciatora","risotto alla zucca","pasta alla norma","polpette di ceci","torta salata verdure","orata al forno","pasta e ceci","melanzane ripiene","gnocchi alla sorrentina","involtini di pollo","cheesecake al limone","pasta con tonno","parmigiana di zucchine","spezzatino con patate","focaccia fatta in casa","crepes ricotta spinaci","salmone in padella","crostata marmellata","riso venere verdure","lasagne vegetariane","torta yogurt","frittata patate","pollo al curry","zuppa lenticchie","pasta pomodorini burrata","polpettone al forno","biscotti fatti in casa","insalata di farro"];
   const now = new Date();
   const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   const dailySites = ["misya.info","cookist.it","cucchiaio.it","fattoincasadabenedetta.it","ricettedellanonna.net","tavolartegusto.it"];
