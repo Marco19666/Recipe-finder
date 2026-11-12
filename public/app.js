@@ -646,6 +646,99 @@ if(installButton){
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
 
 
+// Archimede: flusso guidato ingredienti -> categoria -> una proposta AI, senza quota durante lo sviluppo.
+const archimedeSection=document.querySelector("#archimede-section");
+const archimedeButton=document.querySelector("#show-archimede");
+const archimedeBack=document.querySelector("#archimede-back");
+const archimedeForm=document.querySelector("#archimede-form");
+const archimedeIngredients=document.querySelector("#archimede-ingredients");
+const archimedeSubmit=document.querySelector("#archimede-submit");
+const archimedeResult=document.querySelector("#archimede-result");
+function archimedeShow(){
+  setTryRecipesVisible(false);
+  for(const id of ["daily-recipe-section","results-section","favorites-section","personal-section","shopping-section","history-section","welcome","chef-section"]){
+    const node=document.getElementById(id);if(node)node.hidden=true;
+  }
+  document.querySelector(".hero").hidden=true;
+  archimedeSection.hidden=false;
+  archimedeIngredients.focus();
+}
+archimedeButton?.addEventListener("click",archimedeShow);
+archimedeBack?.addEventListener("click",()=>{
+  archimedeSection.hidden=true;
+  document.querySelector(".hero").hidden=false;
+  document.querySelector("#daily-recipe-section").hidden=false;
+  welcome.hidden=false;
+  setTryRecipesVisible(true);
+});
+function archimedeNode(tag,className,text){
+  const node=document.createElement(tag);
+  if(className)node.className=className;
+  if(text!==undefined)node.textContent=String(text);
+  return node;
+}
+function archimedeList(parent,title,items,kind){
+  if(!Array.isArray(items)||!items.length)return;
+  const section=archimedeNode("section","archimede-ingredient-group archimede-ingredient-group--"+kind);
+  section.appendChild(archimedeNode("h4","",title));
+  const list=archimedeNode("ul","");
+  for(const item of items){
+    const name=typeof item==="string"?item:item?.name;
+    if(!name)continue;
+    const li=archimedeNode("li","",name);
+    if(item?.reason)li.appendChild(archimedeNode("small","",item.reason));
+    list.appendChild(li);
+  }
+  section.appendChild(list);parent.appendChild(section);
+}
+function archimedeRender(recipe){
+  archimedeResult.replaceChildren();
+  archimedeResult.hidden=false;
+  archimedeResult.appendChild(archimedeNode("div","archimede-result-kicker","LA PROPOSTA DI ARCHIMEDE"));
+  archimedeResult.appendChild(archimedeNode("h3","",recipe.title||"La tua ricetta"));
+  if(recipe.intro)archimedeResult.appendChild(archimedeNode("p","archimede-recipe-intro",recipe.intro));
+  const meta=archimedeNode("div","archimede-recipe-meta");
+  for(const value of [recipe.time_minutes?recipe.time_minutes+" minuti":"",recipe.difficulty||"",recipe.servings?recipe.servings+" porzioni":""]){
+    if(value)meta.appendChild(archimedeNode("span","",value));
+  }
+  if(meta.childNodes.length)archimedeResult.appendChild(meta);
+  const ingredients=archimedeNode("div","archimede-ingredient-groups");
+  archimedeList(ingredients,"✓ Hai e utilizzi",recipe.available,"available");
+  archimedeList(ingredients,"! Ti manca",recipe.missing,"missing");
+  archimedeList(ingredients,"＋ Facoltativi",recipe.optional,"optional");
+  if(ingredients.childNodes.length)archimedeResult.appendChild(ingredients);
+  if(Array.isArray(recipe.steps)&&recipe.steps.length){
+    archimedeResult.appendChild(archimedeNode("h4","archimede-steps-title","Preparazione"));
+    const steps=archimedeNode("ol","archimede-steps");
+    recipe.steps.forEach(step=>steps.appendChild(archimedeNode("li","",step)));
+    archimedeResult.appendChild(steps);
+  }
+  archimedeResult.scrollIntoView({behavior:"smooth",block:"start"});
+}
+archimedeForm?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const ingredients=archimedeIngredients.value.trim();
+  const category=archimedeForm.querySelector('input[name="archimede-category"]:checked')?.value||"Primo";
+  if(!ingredients)return;
+  archimedeSubmit.disabled=true;
+  archimedeSubmit.textContent="Archimede sta pensando…";
+  archimedeResult.hidden=false;
+  archimedeResult.replaceChildren(archimedeNode("p","archimede-loading","Sto preparando una ricetta con i tuoi ingredienti…"));
+  try{
+    const response=await fetch("/api/archimede/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ingredients,category})});
+    const raw=await response.text();
+    let data={};try{data=raw?JSON.parse(raw):{}}catch{throw new Error("Il server ha restituito una risposta non valida.");}
+    if(!response.ok)throw new Error(data.detail||"Non riesco a contattare Archimede. Riprova.");
+    if(!data.recipe)throw new Error("Non ho ricevuto una ricetta completa. Riprova.");
+    archimedeRender(data.recipe);
+  }catch(error){
+    archimedeResult.replaceChildren(archimedeNode("p","archimede-error",error.message||"Si è verificato un errore."));
+  }finally{
+    archimedeSubmit.disabled=false;
+    archimedeSubmit.textContent="Chiedi ad Archimede ✨";
+  }
+});
+
 // Assistente Chiedi allo chef: modalità test senza limite giornaliero.
 const CHEF_DEVICE_KEY="cosa-cucino-chef-device-v1";
 const chefSection=document.querySelector("#chef-section"),chefButton=document.querySelector("#show-chef"),chefMessages=document.querySelector("#chef-messages"),chefForm=document.querySelector("#chef-form"),chefQuestion=document.querySelector("#chef-question"),chefQuota=document.querySelector("#chef-quota"),chefSend=document.querySelector("#chef-send");

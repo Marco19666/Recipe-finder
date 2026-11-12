@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=33">
+  <link rel="stylesheet" href="/styles.css?v=34">
 </head>
 <body>
   <div id="app-splash" class="app-splash" role="status" aria-live="polite" aria-label="Caricamento di Cosa Cucino?">
@@ -48,7 +48,7 @@
           <label class="site-option"><input type="checkbox" name="search-site" value="tavolartegusto.it" checked> Tavolartegusto</label>
         </div>
       </div>
-      <div class="home-actions"><button id="show-chef" class="chef-home-button" type="button"><span class="chef-home-icon" aria-hidden="true">👨‍🍳</span><span class="chef-home-copy"><strong>Chiedi allo chef</strong><small>Un aiuto in più per le tue idee in cucina</small></span><span class="chef-home-arrow" aria-hidden="true">↗</span></button><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button><button id="show-personal" class="favorites-home-button" type="button">＋ Le mie ricette <span id="personal-count">0</span></button><button id="show-shopping" class="favorites-home-button" type="button">🛒 Lista della spesa <span id="shopping-count">0</span></button><button id="show-history" class="favorites-home-button" type="button">⌕ Ultime ricerche</button></div>
+      <div class="home-actions"><button id="show-archimede" class="archimede-home-button" type="button"><span class="archimede-home-icon" aria-hidden="true">🦉</span><span><strong>Archimede</strong><small>Cosa cucino con quello che ho?</small></span><span class="chef-home-arrow" aria-hidden="true">↗</span></button><button id="show-chef" class="chef-home-button" type="button"><span class="chef-home-icon" aria-hidden="true">👨‍🍳</span><span class="chef-home-copy"><strong>Chiedi allo chef</strong><small>Un aiuto in più per le tue idee in cucina</small></span><span class="chef-home-arrow" aria-hidden="true">↗</span></button><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button><button id="show-personal" class="favorites-home-button" type="button">＋ Le mie ricette <span id="personal-count">0</span></button><button id="show-shopping" class="favorites-home-button" type="button">🛒 Lista della spesa <span id="shopping-count">0</span></button><button id="show-history" class="favorites-home-button" type="button">⌕ Ultime ricerche</button></div>
       <section class="try-recipes-section" aria-labelledby="try-recipes-title"><div class="section-heading"><div><div class="eyebrow">CINQUE IDEE NUOVE OGNI GIORNO</div><h2 id="try-recipes-title">Prova oggi</h2></div><span id="try-recipes-count" class="result-count">5 ricette da scoprire</span></div><div id="try-recipes" class="results-grid"><div class="empty-state">Sto preparando le idee di oggi...</div></div></section>
       <div class="source-line"><span class="source-dot"></span> Fonti selezionate: Misya, Cookist, Cucchiaio d'Argento e altri</div>
     </section>
@@ -89,6 +89,31 @@
       <div id="shopping-list" class="shopping-list"></div>
       <div class="shopping-actions"><button id="shopping-clear" class="favorite-remove" type="button">Svuota lista</button></div>
     </section>
+    <section id="archimede-section" class="results-section archimede-section" hidden>
+      <div class="section-heading"><div><div class="eyebrow">IL TUO ASSISTENTE DI CUCINA</div><h2>Archimede</h2></div><button id="archimede-back" class="back-home-button" type="button">Torna alla home</button></div>
+      <div class="archimede-card">
+        <div class="archimede-intro">
+          <div class="archimede-avatar" aria-hidden="true">
+            <svg viewBox="0 0 120 120" role="img"><path d="M17 53C12 27 32 12 52 27c5-20 31-20 36 0 20-15 40 0 35 26l-8 35H25z" fill="#e7c58b" stroke="#8c6239" stroke-width="3"/><path d="M27 55c0-19 14-32 30-25 16-7 36 6 36 25v30c0 17-14 27-33 27S27 102 27 85z" fill="#f2d6a5" stroke="#8c6239" stroke-width="3"/><circle cx="44" cy="65" r="18" fill="#fff"/><circle cx="76" cy="65" r="18" fill="#fff"/><circle cx="46" cy="66" r="7" fill="#49352b"/><circle cx="74" cy="66" r="7" fill="#49352b"/><path d="m55 78 10 0-5 9z" fill="#d88a35"/><path d="M35 105q25-14 50 0" fill="none" stroke="#8c6239" stroke-width="3" stroke-linecap="round"/><path d="M22 23 12 9l22 7m54 0 22-7-10 14" fill="#e7c58b" stroke="#8c6239" stroke-width="3" stroke-linejoin="round"/></svg>
+          </div>
+          <div><span class="chef-kicker">CIAO, SONO ARCHIMEDE</span><h3>Dimmi cosa hai in cucina</h3><p>Prima scegli gli ingredienti, poi il tipo di piatto. Ti proporrò una ricetta usando ciò che hai davvero a disposizione.</p><span class="archimede-test-note">Modalità sviluppo: richieste AI illimitate</span></div>
+        </div>
+        <form id="archimede-form" class="archimede-form">
+          <label for="archimede-ingredients">1. Quali ingredienti hai in casa?</label>
+          <textarea id="archimede-ingredients" rows="3" maxlength="1200" placeholder="Es. zucchine, spaghetti, bacon, pomodoro..." required></textarea>
+          <span class="archimede-help">Separali con una virgola oppure scrivili uno per riga.</span>
+          <fieldset class="archimede-categories"><legend>2. Cosa vuoi cucinare?</legend>
+            <label><input type="radio" name="archimede-category" value="Antipasto"><span>🥗 Antipasto</span></label>
+            <label><input type="radio" name="archimede-category" value="Primo" checked><span>🍝 Primo</span></label>
+            <label><input type="radio" name="archimede-category" value="Secondo"><span>🍗 Secondo</span></label>
+            <label><input type="radio" name="archimede-category" value="Contorno"><span>🥦 Contorno</span></label>
+            <label><input type="radio" name="archimede-category" value="Dolce"><span>🍰 Dolce</span></label>
+          </fieldset>
+          <button id="archimede-submit" class="recipe-button" type="submit">Chiedi ad Archimede ✨</button>
+        </form>
+        <div id="archimede-result" class="archimede-result" aria-live="polite" hidden></div>
+      </div>
+    </section>
     <section id="chef-section" class="results-section chef-section" hidden>
       <div class="section-heading"><div><div class="eyebrow">IL TUO AIUTO IN CUCINA</div><h2>Chiedi allo chef</h2></div><button id="chef-back" class="back-home-button" type="button">Torna alla home</button></div>
       <div class="chef-card">
@@ -112,6 +137,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>Cosa Cucino?</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=39" defer></script>
+  <script src="/app.js?v=40" defer></script>
 </body>
 </html>
