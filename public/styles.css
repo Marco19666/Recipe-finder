@@ -560,3 +560,21 @@ body[data-theme="dark"] .suggestion-category {
   border-color: #465647;
 }
 .suggestion-unavailable { opacity: .78; }
+
+
+/* Splash screen iniziale: resta visibile fino al caricamento della home. */
+.app-splash{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:var(--paper);color:var(--ink);opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
+.app-splash.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+.splash-content{display:flex;flex-direction:column;align-items:center;text-align:center}
+.splash-mark{display:grid;place-items:center;width:76px;height:76px;margin-bottom:18px;border-radius:50%;background:var(--green);color:#fff;font:600 48px "Playfair Display",Georgia,serif;box-shadow:0 12px 32px #304c3526;animation:splash-breathe 1.8s ease-in-out infinite}
+.splash-name{font:700 30px "DM Sans",sans-serif;letter-spacing:-1.2px}
+.splash-name span{color:var(--orange)}
+.splash-content p{margin:12px 0 22px;color:var(--muted);font-size:14px}
+.splash-loader{display:flex;gap:7px;align-items:center}
+.splash-loader i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:splash-dot .9s ease-in-out infinite alternate}
+.splash-loader i:nth-child(2){animation-delay:.2s}.splash-loader i:nth-child(3){animation-delay:.4s}
+@keyframes splash-dot{from{opacity:.35;transform:translateY(0)}to{opacity:1;transform:translateY(-5px)}}
+@keyframes splash-breathe{50%{transform:scale(1.045)}}
+@media(prefers-reduced-motion:reduce){.app-splash,.splash-mark,.splash-loader i{transition:none;animation:none}}
+body[data-theme="dark"] .app-splash{background:var(--paper);color:var(--text-primary)}
+body[data-theme="dark"] .splash-content p{color:var(--text-secondary)}
