@@ -265,7 +265,7 @@ async function loadDailyRecipe() {
     }
   }
   if (tryGrid) {
-    const startIndex = (dayNumber * 5) % tryQueries.length;
+    const startIndex = dayNumber % tryQueries.length;
     const queries = Array.from({ length: 5 }, (_, index) => tryQueries[(startIndex + index) % tryQueries.length]);
     tryGrid.innerHTML = '<div class="empty-state">Sto preparando 5 idee diverse da provare oggi...</div>';
     const found = await Promise.all(queries.map((query, index) => fetchSuggestion(query, dayNumber, index + 1, dailySites)));
@@ -273,8 +273,13 @@ async function loadDailyRecipe() {
     const seen = new Set();
     found.forEach(item => {
       if (!item) return;
-      const key = String(item.url).replace(/#.*$/, "").toLowerCase();
-      if (!seen.has(key)) { seen.add(key); unique.push(item); }
+      const urlKey = String(item.url).replace(/#.*$/, "").toLowerCase();
+      const titleKey = String(item.title || "").trim().toLocaleLowerCase("it");
+      if (!seen.has(urlKey) && !seen.has(titleKey)) {
+        seen.add(urlKey);
+        seen.add(titleKey);
+        unique.push(item);
+      }
     });
     tryGrid.innerHTML = unique.length
       ? unique.map((item, index) => renderSuggestionCard(item, index, "try-recipe-card")).join("")
