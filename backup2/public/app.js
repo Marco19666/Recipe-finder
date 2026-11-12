@@ -1,3 +1,72 @@
+
+const themeToggle = document.querySelector("#theme-toggle");
+const wakeToggle = document.querySelector("#wake-toggle");
+const THEME_KEY = "recipe-finder-theme-v1";
+const WAKE_KEY = "recipe-finder-wake-lock-v1";
+function applyTheme(theme) {
+  const dark = theme === "dark";
+  document.body.dataset.theme = dark ? "dark" : "light";
+  if (themeToggle) {
+    themeToggle.textContent = dark ? "☀ Tema chiaro" : "☾ Tema scuro";
+    themeToggle.setAttribute("aria-pressed", String(dark));
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#20251f" : "#3f6245");
+}
+applyTheme(localStorage.getItem(THEME_KEY) || "light");
+themeToggle?.addEventListener("click", () => {
+  const next = document.body.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+let wakeLock = null;
+let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
+function updateWakeButton() {
+  if (!wakeToggle) return;
+  wakeToggle.textContent = wakeEnabled ? "✓ Schermo sempre acceso" : "♧ Schermo sempre acceso";
+  wakeToggle.setAttribute("aria-pressed", String(wakeEnabled));
+  wakeToggle.classList.toggle("is-active", wakeEnabled);
+}
+async function requestWakeLock() {
+  if (!wakeEnabled || document.visibilityState !== "visible" || !("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch (error) {
+    if (wakeEnabled) notify("Il telefono o il browser non consentono di mantenere lo schermo acceso.");
+  }
+}
+async function releaseWakeLock() {
+  if (wakeLock) {
+    try { await wakeLock.release(); } catch (_) {}
+    wakeLock = null;
+  }
+}
+wakeToggle?.addEventListener("click", async () => {
+  wakeEnabled = !wakeEnabled;
+  localStorage.setItem(WAKE_KEY, String(wakeEnabled));
+  updateWakeButton();
+  if (wakeEnabled) {
+    if (!("wakeLock" in navigator)) {
+      wakeEnabled = false;
+      localStorage.setItem(WAKE_KEY, "false");
+      updateWakeButton();
+      notify("Questa versione del browser non supporta lo schermo sempre acceso.");
+      return;
+    }
+    await requestWakeLock();
+    if (wakeEnabled) notify("Schermo sempre acceso attivato.");
+  } else {
+    await releaseWakeLock();
+    notify("Schermo sempre acceso disattivato.");
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") requestWakeLock();
+  else releaseWakeLock();
+});
+updateWakeButton();
+if (wakeEnabled) requestWakeLock();
+
 const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#query");
 const resultsSection = document.querySelector("#results-section");
@@ -17,9 +86,16 @@ const personalSection = document.querySelector("#personal-section");
 const personalGrid = document.querySelector("#personal-grid");
 const personalButton = document.querySelector("#show-personal");
 const personalCount = document.querySelector("#personal-count");
+function setTryRecipesVisible(visible) {
+  const section = document.querySelector(".try-recipes-section");
+  if (!section) return;
+  section.hidden = !visible;
+  section.style.display = visible ? "" : "none";
+}
 const PERSONAL_KEY = "recipe-finder-personal-recipes-v1";
 const FAVORITES_KEY = "recipe-finder-favorites-v1";
 const SHOPPING_KEY = "recipe-finder-shopping-list-v1";
+const HISTORY_KEY = "recipe-finder-search-history-v1";
 const shoppingSection = document.querySelector("#shopping-section");
 const shoppingList = document.querySelector("#shopping-list");
 const shoppingCount = document.querySelector("#shopping-count");
@@ -31,7 +107,8 @@ siteCheckboxes.forEach(input => input.addEventListener("change", () => { allSite
 function getPersonalRecipes() { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) || "[]"); } catch { return []; } }
 function savePersonalRecipes(items) { localStorage.setItem(PERSONAL_KEY, JSON.stringify(items)); personalCount.textContent = items.length; }
 function showPersonal() {
-  resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
+  setTryRecipesVisible(false);
+  resultsSection.hidden = true; favoritesSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true; document.querySelector("#history-section").hidden = true;
   personalSection.hidden = false;
   document.querySelector('#personal-form').hidden = true;
   document.querySelector('#personal-add').hidden = false;
@@ -96,7 +173,18 @@ function toggleFavorite(item) {
   saveFavorites(exists ? items.filter(saved => saved.url !== item.url) : [item, ...items]);
   notify(exists ? "Ricetta rimossa dalle preferite." : "Ricetta salvata tra le preferite."); return !exists;
 }
-function showFavorites() { resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function showFavorites() { document.querySelector(".try-recipes-section").hidden = true; resultsSection.hidden = true; welcomeSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; document.querySelector("#history-section").hidden = true; favoritesSection.hidden = false; renderFavorites(); }
+function renderFavoriteReview(item, index) {
+  const rating = Math.max(0, Math.min(5, Number(item.rating) || 0));
+  const stars = [1,2,3,4,5].map(value =>
+    '<button type="button" class="review-star' + (value <= rating ? ' is-active' : '') + '" data-review-star="' + value + '" data-review-index="' + index + '" aria-label="' + value + ' stelle">★</button>'
+  ).join("");
+  return '<div class="favorite-review"><div class="review-stars" aria-label="Valutazione personale">' + stars + '</div><label for="favorite-note-' + index + '">La tua nota</label><textarea id="favorite-note-' + index + '" data-review-note="' + index + '" rows="2" maxlength="500" placeholder="Scrivi un appunto su questa ricetta...">' + esc(item.note || "") + '</textarea><button type="button" class="recipe-button review-save" data-review-save="' + index + '">Salva nota</button></div>';
+}
+function updateFavoriteReview(url, changes) {
+  saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...changes } : item));
+}
+
 function renderFavorites() {
   const all = getFavorites();
   const term = (document.querySelector("#favorites-search").value || "").trim().toLocaleLowerCase("it");
@@ -105,13 +193,25 @@ function renderFavorites() {
     (!term || (item.title + " " + (item.source || "")).toLocaleLowerCase("it").includes(term)));
   favoritesGrid.innerHTML = items.length ? items.map((item, index) => {
     const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager">' : '<div class="result-placeholder"></div>';
-    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><label class="favorite-category-label">Categoria <select class="favorite-category" data-favorite-category="' + index + '"><option' + ((item.category || "Altro") === "Primo" ? " selected" : "") + '>Primo</option><option' + (item.category === "Secondo" ? " selected" : "") + '>Secondo</option><option' + (item.category === "Contorno" ? " selected" : "") + '>Contorno</option><option' + (item.category === "Antipasto" ? " selected" : "") + '>Antipasto</option><option' + (item.category === "Dolce" ? " selected" : "") + '>Dolce</option><option' + ((item.category || "Altro") === "Altro" ? " selected" : "") + '>Altro</option></select></label><div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div>' + (item.ingredients && item.ingredients.length ? '<button class="shopping-add" data-favorite-shopping="' + index + '" type="button">＋ Ingredienti nella lista</button>' : '') + '</div></article>';
+    return '<article class="result-card">' + image + '<div class="result-body"><span class="result-source">' + esc(item.source || "Ricetta salvata") + '</span><h3>' + esc(item.title) + '</h3><label class="favorite-category-label">Categoria <select class="favorite-category" data-favorite-category="' + index + '"><option' + ((item.category || "Altro") === "Primo" ? " selected" : "") + '>Primo</option><option' + (item.category === "Secondo" ? " selected" : "") + '>Secondo</option><option' + (item.category === "Contorno" ? " selected" : "") + '>Contorno</option><option' + (item.category === "Antipasto" ? " selected" : "") + '>Antipasto</option><option' + (item.category === "Dolce" ? " selected" : "") + '>Dolce</option><option' + ((item.category || "Altro") === "Altro" ? " selected" : "") + '>Altro</option></select></label>' + renderFavoriteReview(item, index) + '<div class="card-actions"><button class="recipe-button" data-favorite-open="' + index + '">Apri ricetta</button><button class="favorite-remove" data-favorite-remove="' + index + '">Rimuovi</button></div>' + (item.ingredients && item.ingredients.length ? '<button class="shopping-add" data-favorite-shopping="' + index + '" type="button">＋ Ingredienti nella lista</button>' : '') + '</div></article>';
   }).join("") : '<div class="empty-state">' + (all.length ? "Nessuna ricetta corrisponde alla ricerca o categoria scelta." : "Non hai ancora salvato ricette. Apri una ricetta e premi “Ricetta preferita”.") + '</div>';
   favoritesGrid.querySelectorAll("[data-favorite-open]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteOpen)]; loadRecipe(item.url, item); }));
   favoritesGrid.querySelectorAll("[data-favorite-remove]").forEach(button => button.addEventListener("click", () => { const item = items[Number(button.dataset.favoriteRemove)]; saveFavorites(getFavorites().filter(saved => saved.url !== item.url)); renderFavorites(); }));
   favoritesGrid.querySelectorAll("[data-favorite-category]").forEach(select => select.addEventListener("change", () => {
     const item = items[Number(select.dataset.favoriteCategory)];
     saveFavorites(getFavorites().map(saved => saved.url === item.url ? { ...saved, category: select.value } : saved));
+    renderFavorites();
+  }));
+  favoritesGrid.querySelectorAll("[data-review-star]").forEach(button => button.addEventListener("click", () => {
+    const item = items[Number(button.dataset.reviewIndex)];
+    updateFavoriteReview(item.url, { rating: Number(button.dataset.reviewStar) });
+    renderFavorites();
+  }));
+  favoritesGrid.querySelectorAll("[data-review-save]").forEach(button => button.addEventListener("click", () => {
+    const item = items[Number(button.dataset.reviewSave)];
+    const note = favoritesGrid.querySelector('[data-review-note="' + button.dataset.reviewSave + '"]').value.trim();
+    updateFavoriteReview(item.url, { note });
+    notify("Nota personale salvata.");
     renderFavorites();
   }));
   favoritesGrid.querySelectorAll("[data-favorite-shopping]").forEach(button => button.addEventListener("click", () => addShoppingIngredients(items[Number(button.dataset.favoriteShopping)].ingredients)));
@@ -122,45 +222,91 @@ const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, char
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[char]));
 
+async function fetchSuggestion(query, dayNumber, slot, sites) {
+  const firstIndex = (dayNumber + slot * 3) % sites.length;
+  const orderedSites = [sites[firstIndex], sites[(firstIndex + 1) % sites.length]];
+  for (const site of orderedSites) {
+    try {
+      const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(site) + "&_=" + Date.now(), { cache: "no-store" });
+      if (!(response.headers.get("content-type") || "").includes("application/json")) continue;
+      const payload = await response.json();
+      if (!response.ok) continue;
+      const item = (payload.results || []).find(result => result && result.title && result.url);
+      if (item) return item;
+    } catch {}
+  }
+  return null;
+}
+function renderSuggestionCard(item, index, extraClass = "", category = "") {
+  const image = item.image
+    ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" referrerpolicy="no-referrer">'
+    : '<div class="result-placeholder" aria-hidden="true">✳</div>';
+  const description = esc((item.description || "Scopri ingredienti e preparazione di questa ricetta.").slice(0, 180));
+  const categoryLabel = category ? '<span class="suggestion-category">' + esc(category) + '</span>' : '';
+  return '<article class="result-card ' + extraClass + '">' + image + '<div class="result-body">' + categoryLabel + '<span class="result-source">' + esc(item.source || "Ricetta selezionata") + '</span><h3>' + esc(item.title) + '</h3><p>' + description + '</p><div class="card-actions"><button class="recipe-button" type="button" data-suggestion-open="' + index + '">Scopri la ricetta</button></div></div></article>';
+}
+function bindSuggestionButtons(container, items) {
+  container.querySelectorAll("[data-suggestion-open]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = items[Number(button.dataset.suggestionOpen)];
+      if (item) loadRecipe(item.url, item);
+    });
+  });
+}
 async function loadDailyRecipe() {
   const dailyGrid = document.querySelector("#daily-recipe");
-  if (!dailyGrid) return;
+  const tryGrid = document.querySelector("#try-recipes");
   const dailyQueries = ["pasta al forno","pollo al limone","risotto ai funghi","parmigiana di melanzane","polpette al sugo","torta di mele","lasagne","pasta alla carbonara","frittata di verdure","tiramisù","salmone al forno","gnocchi al pomodoro","crostata","spezzatino","pasta al pesto"];
   const now = new Date();
-  const dayNumber = Math.floor(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000);
-  const query = dailyQueries[((dayNumber%dailyQueries.length)+dailyQueries.length)%dailyQueries.length];
+  const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   const dailySites = ["misya.info","cookist.it","cucchiaio.it","fattoincasadabenedetta.it","ricettedellanonna.net","tavolartegusto.it"];
-  const savedChoiceKey = "recipe-finder-daily-site-v1";
-  let primarySite = "";
-  try {
-    const savedChoice = JSON.parse(localStorage.getItem(savedChoiceKey)||"null");
-    if(savedChoice&&savedChoice.day===dayNumber&&dailySites.includes(savedChoice.site)) primarySite=savedChoice.site;
-  } catch {}
-  if(!primarySite){
-    primarySite=dailySites[Math.floor(Math.random()*dailySites.length)];
-    try{localStorage.setItem(savedChoiceKey,JSON.stringify({day:dayNumber,site:primarySite}));}catch{}
+  if (dailyGrid) {
+    const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
+    dailyGrid.innerHTML = '<div class="empty-state">Sto scegliendo la ricetta di oggi...</div>';
+    const item = await fetchSuggestion(query, dayNumber, 0, dailySites);
+    if (item) {
+      dailyGrid.innerHTML = renderSuggestionCard(item, 0, "daily-recipe-card");
+      bindSuggestionButtons(dailyGrid, [item]);
+    } else {
+      dailyGrid.innerHTML = '<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
+    }
   }
-  // Prova il sito casuale del giorno e, se serve, una sola seconda fonte.
-  const fallbackSites=dailySites.filter(value=>value!==primarySite);
-  const fallbackSite=fallbackSites[Math.floor(Math.random()*fallbackSites.length)];
-  for(const site of [primarySite,fallbackSite]){
-    try{
-      const response=await fetch("/api/search?q="+encodeURIComponent(query)+"&sites="+encodeURIComponent(site)+"&_="+Date.now(),{cache:"no-store"});
-      if(!(response.headers.get("content-type")||"").includes("application/json")) continue;
-      const payload=await response.json();
-      if(!response.ok) continue;
-      const item=(payload.results||[]).find(result=>result&&result.title&&result.url);
-      if(!item) continue;
-      const image=item.image?'<img class="result-image" src="'+esc(item.image)+'" alt="'+esc(item.title)+'" loading="eager" referrerpolicy="no-referrer">':'<div class="result-placeholder" aria-hidden="true">✳</div>';
-      const description=esc((item.description||"Scopri ingredienti e preparazione di questa ricetta.").slice(0,180));
-      dailyGrid.innerHTML='<article class="result-card daily-recipe-card">'+image+'<div class="result-body"><span class="result-source">'+esc(item.source||"Ricetta selezionata")+'</span><h3>'+esc(item.title)+'</h3><p>'+description+'</p><div class="card-actions"><button class="recipe-button" id="daily-recipe-open" type="button">Scopri la ricetta</button></div></div></article>';
-      document.querySelector("#daily-recipe-open").addEventListener("click",()=>loadRecipe(item.url,item));
-      return;
-    }catch{}
+  if (tryGrid) {
+    const tryCategories = [
+      { label: "Antipasto", queries: ["bruschette pomodoro", "crostini sfiziosi", "involtini di melanzane", "frittelle salate"] },
+      { label: "Primo", queries: ["risotto ai funghi", "pasta alla norma", "lasagne vegetariane", "pasta al pesto"] },
+      { label: "Secondo", queries: ["pollo alla cacciatora", "polpette al sugo", "orata al forno", "polpettone al forno"] },
+      { label: "Contorno", queries: ["patate al forno", "verdure gratinate", "zucchine trifolate", "melanzane grigliate"] },
+      { label: "Dolce", queries: ["crostata alla marmellata", "torta di mele", "cheesecake al limone", "tiramisù"] }
+    ];
+    tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
+    const choices = tryCategories.map((category, index) => ({
+      ...category,
+      query: category.queries[Math.floor(dayNumber / 5 + index * 7) % category.queries.length]
+    }));
+    const found = await Promise.all(choices.map((category, index) =>
+      fetchSuggestion(category.query, dayNumber, index + 1, dailySites)
+    ));
+    const seen = new Set();
+    const suggestions = choices.map((category, index) => {
+      const item = found[index];
+      if (!item) return { category: category.label, item: null };
+      const urlKey = String(item.url).replace(/#.*$/, "").toLowerCase();
+      const titleKey = String(item.title || "").trim().toLocaleLowerCase("it");
+      if (seen.has(urlKey) || seen.has(titleKey)) return { category: category.label, item: null };
+      seen.add(urlKey);
+      seen.add(titleKey);
+      return { category: category.label, item };
+    });
+    tryGrid.innerHTML = suggestions.map((entry, index) => entry.item
+      ? renderSuggestionCard(entry.item, index, "try-recipe-card", entry.category)
+      : '<article class="result-card try-recipe-card suggestion-unavailable"><div class="result-placeholder" aria-hidden="true">✳</div><div class="result-body"><span class="suggestion-category">' + esc(entry.category) + '</span><h3>Ricetta non disponibile</h3><p>Oggi non è stato possibile trovare una proposta per questa portata.</p></div></article>'
+    ).join("");
+    bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
+    const count = document.querySelector("#try-recipes-count");
+    if (count) count.textContent = "Menu completo · 5 portate";
   }
-  dailyGrid.innerHTML='<div class="empty-state">La ricetta del giorno non è disponibile in questo momento. Riprova tra poco.</div>';
 }
-
 function notify(message, duration = 3200) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -172,63 +318,117 @@ function setLoading(loading) {
   button.innerHTML = loading ? "Cerco..." : 'Cerca ricette <span aria-hidden="true">↗</span>';
 }
 
+function getSearchHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; } }
+function saveSearchHistory(query) {
+  const normalized = String(query || "").trim();
+  if (!normalized) return;
+  const items = getSearchHistory().filter(item => item.query.toLocaleLowerCase("it") !== normalized.toLocaleLowerCase("it"));
+  items.unshift({ query: normalized, date: Date.now() });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 10)));
+}
+function renderSearchHistory() {
+  const grid = document.querySelector("#history-list");
+  const items = getSearchHistory();
+  grid.innerHTML = items.length ? items.map((item, index) =>
+    '<div class="history-item"><button type="button" class="history-query" data-history-run="' + index + '">' + esc(item.query) + '</button><button type="button" class="favorite-remove" data-history-delete="' + index + '" aria-label="Elimina ricerca">Elimina</button></div>'
+  ).join("") : '<div class="empty-state">Non hai ancora effettuato ricerche.</div>';
+  grid.querySelectorAll("[data-history-run]").forEach(button => button.addEventListener("click", () => searchRecipes(items[Number(button.dataset.historyRun)].query)));
+  grid.querySelectorAll("[data-history-delete]").forEach(button => button.addEventListener("click", () => {
+    const selected = items[Number(button.dataset.historyDelete)];
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(getSearchHistory().filter(item => item.query !== selected.query)));
+    renderSearchHistory();
+  }));
+}
+function showHistory() {
+  setTryRecipesVisible(false);
+  resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; shoppingSection.hidden = true; welcomeSection.hidden = true;
+  document.querySelector("#history-section").hidden = false;
+  renderSearchHistory();
+}
+
 async function searchRecipes(query) {
   queryInput.value = query;
+  saveSearchHistory(query);
   const selectedSites = getSelectedSites();
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
-  if (selectedSites.length > 3 && sessionStorage.getItem("recipe-finder-many-sites-reminder-v1") !== "shown") {
-    sessionStorage.setItem("recipe-finder-many-sites-reminder-v1", "shown");
-    notify("Promemoria: con più di 3 siti la ricerca potrebbe richiedere più tempo o incontrare rallentamenti. Puoi continuare normalmente.", 6500);
-  }
+  setTryRecipesVisible(false);
   setLoading(true);
   welcome.hidden = true;
+  document.querySelector("#history-section").hidden = true;
   favoritesSection.hidden = true;
   personalSection.hidden = true;
   shoppingSection.hidden = true;
   resultsSection.hidden = false;
   resultsTitle.textContent = "Ricette: " + query;
   resultCount.textContent = "Ricerca in corso";
-  resultsGrid.innerHTML = '<div class="empty-state">Sto cercando tra i siti di cucina...</div>';
-  try {
-    let data = null;
-    let lastError = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(selectedSites.join(",")) + "&_=" + Date.now(), { cache: "no-store" });
-        const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-          throw new Error("Il servizio di ricerca ha restituito una pagina non valida.");
-        }
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile.");
-        data = payload;
-        if ((data.results || []).length > 0 || attempt === 1) break;
-        resultsGrid.innerHTML = '<div class="empty-state">Nessun risultato al primo tentativo. Sto riprovando automaticamente...</div>';
-      } catch (error) {
-        lastError = error;
-        if (attempt === 1) throw error;
-        resultsGrid.innerHTML = '<div class="empty-state">La ricerca ha avuto un problema temporaneo. Riprovo automaticamente...</div>';
-      }
-      await new Promise(resolve => window.setTimeout(resolve, 700));
-    }
-    if (!data && lastError) throw lastError;
-    const results = data?.results || [];
-    resultCount.textContent = results.length + (results.length === 1 ? " risultato" : " risultati");
-    if (!results.length) {
-      resultsGrid.innerHTML = '<div class="empty-state">Non ho trovato ricette per questa ricerca. Prova con un altro ingrediente o piatto.</div>';
-      return;
-    }
-    resultsGrid.innerHTML = results.map((item, index) => {
+  const progress = document.querySelector("#search-progress");
+  const progressTitle = document.querySelector("#search-progress-title");
+  const progressDetail = document.querySelector("#search-progress-detail");
+  const progressBar = document.querySelector("#search-progress-bar");
+  if (progress) progress.hidden = false;
+  if (progress) progress.classList.remove("is-done");
+  const found = [];
+  const seen = new Set();
+  const failedSites = [];
+  const durations = [];
+  const startedAt = Date.now();
+  const renderResults = () => {
+    resultsGrid.innerHTML = found.length ? found.map((item, index) => {
       const image = item.image ? '<img class="result-image" src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="eager" referrerpolicy="no-referrer">' : '<div class="result-placeholder" aria-hidden="true"></div>';
       const description = esc((item.description || "").slice(0, 150)) + ((item.description || "").length > 150 ? "…" : "");
       return '<article class="result-card">' + image +
         '<div class="result-body"><span class="result-source">' + esc(item.source) + '</span>' +
         '<h3>' + esc(item.title) + '</h3><p>' + description + '</p>' +
         '<div class="card-actions"><button class="recipe-button" data-recipe="' + index + '">Ingredienti e procedimento</button></div></div></article>';
-    }).join("");
+    }).join("") : '<div class="empty-state">Sto cercando ricette complete nelle fonti selezionate...</div>';
     resultsGrid.querySelectorAll("[data-recipe]").forEach(button => {
-      button.addEventListener("click", () => loadRecipe(results[Number(button.dataset.recipe)].url, results[Number(button.dataset.recipe)]));
+      button.addEventListener("click", () => loadRecipe(found[Number(button.dataset.recipe)].url, found[Number(button.dataset.recipe)]));
     });
+    resultCount.textContent = found.length + (found.length === 1 ? " ricetta valida" : " ricette valide");
+  };
+  try {
+    let completed = 0;
+    for (let index = 0; index < selectedSites.length && found.length < 12; index++) {
+      const site = selectedSites[index];
+      const averageMs = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 10000;
+      const remainingEstimate = Math.ceil((averageMs * (selectedSites.length - index)) / 1000);
+      if (progressTitle) progressTitle.textContent = "Sto consultando " + site;
+      if (progressDetail) progressDetail.textContent = "Sito " + (index + 1) + " di " + selectedSites.length + " · tempo stimato rimanente: circa " + remainingEstimate + " secondi";
+      if (progressBar) progressBar.style.width = Math.round((index / selectedSites.length) * 100) + "%";
+      const siteStarted = Date.now();
+      try {
+        const response = await fetch("/api/search?q=" + encodeURIComponent(query) + "&sites=" + encodeURIComponent(site) + "&_=" + Date.now(), { cache: "no-store" });
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) throw new Error("Risposta non valida");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Ricerca non disponibile");
+        for (const item of payload.results || []) {
+          if (item && item.title && item.url && !seen.has(item.url)) {
+            seen.add(item.url);
+            found.push(item);
+            if (found.length >= 12) break;
+          }
+        }
+      } catch (error) {
+        failedSites.push(site);
+      }
+      durations.push(Date.now() - siteStarted);
+      completed++;
+      renderResults();
+      if (progressBar) progressBar.style.width = Math.round((completed / selectedSites.length) * 100) + "%";
+    }
+    if (progress) progress.classList.add("is-done");
+    if (progressTitle) progressTitle.textContent = found.length >= 12 ? "Obiettivo raggiunto" : "Ricerca completata";
+    if (progressDetail) {
+      const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      progressDetail.textContent = "Consultati " + completed + " siti in " + duration + " secondi." +
+        (failedSites.length ? " Fonti non raggiungibili: " + failedSites.join(", ") + "." : "");
+    }
+    if (progressBar) progressBar.style.width = "100%";
+    if (!found.length) {
+      resultsGrid.innerHTML = '<div class="empty-state">Non ho trovato ricette complete per questa ricerca. Prova con un altro ingrediente o piatto.</div>';
+      resultCount.textContent = "Nessuna ricetta valida";
+    }
   } catch (error) {
     resultsGrid.innerHTML = '<div class="error-state">' + esc(error.message) + '<br><br>La ricerca automatica non è riuscita. Riprova tra qualche secondo.</div>';
     resultCount.textContent = "Ricerca non riuscita";
@@ -242,7 +442,7 @@ async function loadRecipe(url, fallback = {}) {
   document.body.style.overflow = "hidden";
   recipeContent.innerHTML = '<div class="empty-state">Sto leggendo la ricetta dalla fonte originale...</div>';
   try {
-    const response = await fetch("/api/recipe?url=" + encodeURIComponent(url));
+    const response = await fetch("/api/recipe?url=" + encodeURIComponent(url), { cache: "no-store", headers: { "Accept": "application/json; charset=utf-8" } });
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       throw new Error("Il sito della ricetta ha restituito una risposta non valida. Riprova più tardi.");
@@ -251,21 +451,24 @@ async function loadRecipe(url, fallback = {}) {
     if (!response.ok) throw new Error(data.detail || "Non è stato possibile leggere la ricetta.");
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
     const instructions = Array.isArray(data.instructions) ? data.instructions : [data.instructions].filter(Boolean);
-    const meta = [
-      data.total_time ? "Tempo totale: " + data.total_time + " min" : "",
-      data.yields ? "Dosi: " + data.yields : "",
-      data.author ? "Autore: " + data.author : ""
-    ].filter(Boolean).map(esc).join(" · ");
+    const calories = data.calories_per_serving !== null && data.calories_per_serving !== undefined && data.calories_per_serving !== "" && Number.isFinite(Number(data.calories_per_serving)) ? Number(data.calories_per_serving) : null;
+    const calorieReview = calories === null
+      ? "Dati insufficienti: la fonte non fornisce calorie e non ci sono ingredienti quantificabili."
+      : (data.calories_estimated ? (data.calories_partial ? "Stima parziale: circa " : "Stima indicativa: circa ") : "Valore dichiarato dalla fonte: ") + calories + " kcal per porzione · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal)." + (data.calories_partial ? " Alcuni ingredienti non sono stati riconosciuti: il valore potrebbe essere sottostimato." : "");
+    const meta = data.total_time ? "Tempo totale: " + data.total_time + " min" : "";
+    const portions = '<div class="recipe-portions"><span>PORZIONI</span><strong>' + esc(data.yields || "Non indicate") + '</strong></div>';
+    const calorieStatus = calories === null ? "unknown" : (calories <= 600 ? "ok" : "over");
+    const calorieFooter = '<div class="calorie-review"><strong>Valutazione calorica</strong><span class="calorie-review-status calorie-review-status--' + calorieStatus + '">' + esc(calorieReview.replace(/^Valutazione calorica: /, "")) + '</span></div>';
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
-    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, category: fallback.category || "Altro" };
+    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, yields: data.yields || null, total_time: data.total_time || null, calories_per_serving: calories, category: fallback.category || "Altro" };
     if (isFavorite(url)) { saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...savedItem } : item)); }
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
-      '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
+      '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2>' + (meta ? '<div class="recipe-meta">' + esc(meta) + '</div>' : '') +
       '<button type="button" id="toggle-favorite" class="favorite-toggle" aria-pressed="' + isFavorite(url) + '">' + (isFavorite(url) ? "♥ Ricetta preferita" : "♡ Ricetta preferita") + '</button>' +
       '<button type="button" id="recipe-shopping" class="shopping-add">＋ Ingredienti nella lista della spesa</button>' +
-      image + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps;
+      image + portions + '<h3>Ingredienti</h3>' + ingredientList + '<h3>Preparazione</h3>' + steps + calorieFooter;
     document.querySelector("#recipe-shopping").addEventListener("click", () => addShoppingIngredients(ingredients));
     document.querySelector("#toggle-favorite").addEventListener("click", () => {
       const button = document.querySelector("#toggle-favorite");
@@ -332,12 +535,17 @@ function renderShoppingList() {
   }));
 }
 function showShopping() {
+  setTryRecipesVisible(false);
   resultsSection.hidden = true; favoritesSection.hidden = true; personalSection.hidden = true; welcomeSection.hidden = true;
+  document.querySelector("#history-section").hidden = true;
   shoppingSection.hidden = false; renderShoppingList();
 }
 shoppingCount.textContent = getShoppingItems().length;
 document.querySelector("#show-shopping").addEventListener("click", showShopping);
-document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#show-history").addEventListener("click", showHistory);
+document.querySelector("#history-back").addEventListener("click", () => { document.querySelector("#history-section").hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
+document.querySelector("#history-clear").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderSearchHistory(); notify("Cronologia cancellata."); });
+document.querySelector("#shopping-back").addEventListener("click", () => { shoppingSection.hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
 document.querySelector("#shopping-clear").addEventListener("click", () => {
   saveShoppingItems([]); renderShoppingList(); notify("Lista della spesa svuotata.");
 });
@@ -351,7 +559,7 @@ document.querySelector('#personal-add').addEventListener('click', () => {
   document.querySelector('#personal-add').hidden = true;
   document.querySelector('#personal-title').focus();
 });
-document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#personal-back").addEventListener("click", () => { personalSection.hidden = true; welcomeSection.hidden = false; setTryRecipesVisible(true); });
 document.querySelector("#personal-form").addEventListener("submit", async event => {
   event.preventDefault();
   const title = document.querySelector("#personal-title").value.trim();
@@ -375,7 +583,7 @@ document.querySelector("#personal-form").addEventListener("submit", async event 
 favoritesButton.addEventListener("click", showFavorites);
 document.querySelector("#favorites-search").addEventListener("input", renderFavorites);
 document.querySelector("#favorites-category-filter").addEventListener("change", renderFavorites);
-document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; });
+document.querySelector("#back-home").addEventListener("click", () => { favoritesSection.hidden = true; welcomeSection.hidden = false; document.querySelector(".try-recipes-section").hidden = false; });
 form.addEventListener("submit", event => {
   event.preventDefault();
   const query = queryInput.value.trim();
@@ -398,7 +606,25 @@ document.addEventListener("keydown", event => {
 });
 
 
-loadDailyRecipe();
+const splash = document.querySelector("#app-splash");
+let splashDismissed = false;
+function dismissSplash() {
+  if (splashDismissed || !splash) return;
+  splashDismissed = true;
+  splash.classList.add("is-hidden");
+  window.setTimeout(() => splash.remove(), 400);
+}
+const splashFailsafe = window.setTimeout(dismissSplash, 15000);
+loadDailyRecipe().catch(error => {
+  console.error("Errore nel caricamento dei suggerimenti iniziali:", error);
+}).finally(() => {
+  const finishSplash = () => {
+    window.clearTimeout(splashFailsafe);
+    dismissSplash();
+  };
+  if (document.readyState === "complete") finishSplash();
+  else window.addEventListener("load", finishSplash, { once: true });
+});
 
 let deferredInstallPrompt=null;
 const installButton=document.querySelector("#install-app");
