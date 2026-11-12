@@ -396,14 +396,19 @@ async function loadRecipe(url, fallback = {}) {
     if (!response.ok) throw new Error(data.detail || "Non è stato possibile leggere la ricetta.");
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
     const instructions = Array.isArray(data.instructions) ? data.instructions : [data.instructions].filter(Boolean);
+    const calories = Number.isFinite(Number(data.calories_per_serving)) ? Number(data.calories_per_serving) : null;
+    const calorieReview = calories === null
+      ? "Valutazione calorica: dati non disponibili"
+      : "Calorie per porzione: " + calories + " kcal · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal)";
     const meta = [
       data.total_time ? "Tempo totale: " + data.total_time + " min" : "",
-      "Porzioni: " + (data.yields || "non indicate")
+      "Porzioni: " + (data.yields || "non indicate"),
+      calorieReview
     ].filter(Boolean).map(esc).join(" · ");
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
-    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, yields: data.yields || null, total_time: data.total_time || null, category: fallback.category || "Altro" };
+    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, yields: data.yields || null, total_time: data.total_time || null, calories_per_serving: calories, category: fallback.category || "Altro" };
     if (isFavorite(url)) { saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...savedItem } : item)); }
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
       '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
