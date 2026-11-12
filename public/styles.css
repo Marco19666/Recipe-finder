@@ -615,3 +615,6 @@ body[data-theme="dark"] .chef-home-button{border-color:#789c70;background:linear
 
 /* In modalità scura, il testo delle domande inviate dall’utente resta nero e leggibile. */
 body[data-theme="dark"] .chef-message--user{background:#d7e6d0;color:#000!important;}
+
+/* In tema scuro, anche il testo del pulsante Invia resta nero. */
+body[data-theme="dark"] .chef-form button{color:#000!important;}
