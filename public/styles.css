@@ -705,3 +705,13 @@ body[data-theme="dark"] button#theme-toggle {
   color: #000 !important;
   -webkit-text-fill-color: #000 !important;
 }
+
+
+/* Il selettore del tema riflette il tema attualmente attivo: verde scuro in tema chiaro. */
+body:not([data-theme="dark"]) button#theme-toggle,
+body[data-theme="light"] button#theme-toggle {
+  background: #304c35 !important;
+  border-color: #304c35 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
