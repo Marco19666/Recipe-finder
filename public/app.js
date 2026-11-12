@@ -398,8 +398,8 @@ async function loadRecipe(url, fallback = {}) {
     const instructions = Array.isArray(data.instructions) ? data.instructions : [data.instructions].filter(Boolean);
     const calories = data.calories_per_serving !== null && data.calories_per_serving !== undefined && data.calories_per_serving !== "" && Number.isFinite(Number(data.calories_per_serving)) ? Number(data.calories_per_serving) : null;
     const calorieReview = calories === null
-      ? "Valutazione calorica: dati non disponibili"
-      : "Calorie per porzione: " + calories + " kcal · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal)";
+      ? "Dati insufficienti: servono quantità riconoscibili e numero di porzioni."
+      : (data.calories_estimated ? "Stima indicativa: circa " : "Valore dichiarato dalla fonte: ") + calories + " kcal per porzione · " + (calories <= 600 ? "IN LINEA" : "OLTRE SOGLIA") + " (soglia orientativa 600 kcal).";
     const meta = data.total_time ? "Tempo totale: " + data.total_time + " min" : "";
     const portions = '<div class="recipe-portions"><span>PORZIONI</span><strong>' + esc(data.yields || "Non indicate") + '</strong></div>';
     const calorieFooter = '<div class="calorie-review"><strong>Valutazione calorica</strong><span>' + esc(calorieReview.replace(/^Valutazione calorica: /, "")) + '</span></div>';
