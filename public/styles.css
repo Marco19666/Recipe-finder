@@ -179,3 +179,79 @@ footer span:first-child{font-family:"Playfair Display",Georgia,serif;font-size:1
 .history-item:last-child{border-bottom:0}
 .history-query{flex:1;min-width:0;text-align:left;border:0;background:transparent;color:var(--green-dark);font:600 14px "DM Sans";padding:7px 0;overflow-wrap:anywhere;cursor:pointer}
 @media(max-width:520px){.favorite-review{padding:10px}}
+
+/* Accessibilità: tema scuro e maggiore leggibilità */
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f0eee6;
+  --muted: #b5b6ad;
+  --paper: #171b17;
+  --card: #232923;
+  --green: #a4c69f;
+  --green-dark: #c1dfb8;
+  --line: #3b443b;
+  --orange: #efa47b;
+}
+body[data-theme="dark"] .topbar,
+body[data-theme="dark"] .history-list,
+body[data-theme="dark"] .search-form,
+body[data-theme="dark"] .recipe-card,
+body[data-theme="dark"] .favorite-card,
+body[data-theme="dark"] .personal-card,
+body[data-theme="dark"] .modal .recipe-panel,
+body[data-theme="dark"] .shopping-list,
+body[data-theme="dark"] .empty-state,
+body[data-theme="dark"] .favorite-review textarea,
+body[data-theme="dark"] input,
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea {
+  background-color: var(--card);
+  color: var(--ink);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .chip,
+body[data-theme="dark"] .favorites-home-button,
+body[data-theme="dark"] .back-home-button,
+body[data-theme="dark"] .utility-toggle {
+  color: var(--ink);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .top-note,
+body[data-theme="dark"] .hero-copy,
+body[data-theme="dark"] .source-line,
+body[data-theme="dark"] .result-count,
+body[data-theme="dark"] .popular > span,
+body[data-theme="dark"] footer {
+  color: var(--muted);
+}
+body[data-theme="dark"] .recipe-card p,
+body[data-theme="dark"] .recipe-panel p,
+body[data-theme="dark"] .recipe-panel li,
+body[data-theme="dark"] .personal-card p,
+body[data-theme="dark"] .favorite-card p {
+  color: var(--muted);
+}
+body[data-theme="dark"] .modal-backdrop { background: #000b; }
+body[data-theme="dark"] .install-app-button { background: var(--green); color: #172017; }
+body[data-theme="dark"] .search-form input::placeholder,
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder { color: #9da69b; }
+.utility-toggle {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font: 600 12px "DM Sans";
+  cursor: pointer;
+}
+.utility-toggle.is-active { background: var(--green); color: #fff; border-color: var(--green); }
+.top-actions { display:flex; align-items:center; gap:8px; }
+body { font-weight: 500; }
+button, input, select, textarea, label, strong, b, .result-count, .eyebrow { font-weight: 700; }
+@media(max-width:700px) {
+  .topbar { height:auto; min-height:76px; padding:14px 18px; align-items:flex-start; gap:12px; }
+  .top-actions { justify-content:flex-end; flex-wrap:wrap; }
+  .top-note { display:none; }
+  .utility-toggle { font-size:11px; padding:8px; }
+}
