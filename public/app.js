@@ -351,6 +351,7 @@ async function searchRecipes(query) {
   saveSearchHistory(query);
   const selectedSites = getSelectedSites();
   if (!selectedSites.length) { notify("Seleziona almeno un sito per avviare la ricerca."); return; }
+  setTryRecipesVisible(false);
   setLoading(true);
   welcome.hidden = true;
   document.querySelector("#history-section").hidden = true;
