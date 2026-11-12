@@ -258,7 +258,7 @@ def _estimate_recipe_calories(ingredients, yields):
     if portions <= 0 or not isinstance(ingredients, list) or not ingredients:
         return None, False
 
-    units = r"(?:chilogrammi?|kg|grammi?|gr|g|millilitri?|ml|litri?|litro|l|uov[oa]|cucchiai?|cucchiaini?|bicchier[ei]|spicchi?|fette?|foglie?|rametti?|pizzich[io]|mazzetti?|barattoli?|vasetti?|bustine?)"
+    units = r"(?:chilogrammo|chilogrammi|kg|grammo|grammi|gr|g|millilitro|millilitri|ml|litro|litri|l|uov[oa]|cucchiai?|cucchiaini?|bicchier[ei]|spicchi?|fette?|foglie?|rametti?|pizzich[io]|mazzetti?|barattoli?|vasetti?|bustine?)"
     amounts = r"(\d+\s+\d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?|uno|una|un|due|tre|quattro|cinque|sei|mezzo|mezza|½|¼)"
     words = {"uno":1,"una":1,"un":1,"due":2,"tre":3,"quattro":4,"cinque":5,"sei":6,"mezzo":0.5,"mezza":0.5,"½":0.5,"¼":0.25}
     total = 0.0
