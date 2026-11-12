@@ -796,3 +796,18 @@ body[data-theme="dark"] button#theme-toggle:hover {
   background-color: #cfe3c6 !important;
   border-color: #a8c79d !important;
 }
+/* Il pulsante Schermo sempre acceso usa lo stesso verde chiaro del pulsante Tema. */
+body:not([data-theme="dark"]) button#wake-toggle,
+body:not([data-theme="dark"]) button#wake-toggle.is-active,
+body[data-theme="dark"] button#wake-toggle,
+body[data-theme="dark"] button#wake-toggle.is-active {
+  background-color: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
+}
+body:not([data-theme="dark"]) button#wake-toggle:hover,
+body[data-theme="dark"] button#wake-toggle:hover {
+  background-color: #cfe3c6 !important;
+  border-color: #a8c79d !important;
+}
