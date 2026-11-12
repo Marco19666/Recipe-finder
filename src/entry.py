@@ -212,35 +212,41 @@ def _calories(value):
 
 
 def _estimate_recipe_calories(ingredients, yields):
-    """Stima indicativa delle kcal per porzione; rifiuta ingredienti calorici non quantificabili."""
+    """Stima kcal/porzione tollerante alle varianti delle ricette; segnala se è parziale."""
     import re
     import unicodedata
 
     foods = {
-        "spaghetti":353,"pasta":353,"penne":353,"riso":360,"farina":364,
-        "zucchero":400,"olio":884,"burro":717,"uova":143,"uovo":143,
-        "latte":61,"panna":340,"parmigiano":402,"grana":398,"mozzarella":250,
-        "ricotta":174,"passata":30,"pomodoro":18,"zucchine":17,"zucchina":17,
-        "melanzane":25,"melanzana":25,"carote":41,"carota":41,"cipolla":40,
-        "aglio":149,"patate":77,"patata":77,"pollo":165,"manzo":250,
-        "macinato":250,"trita":250,"carne":250,"vitello":172,"maiale":242,
-        "tonno":132,"salmone":208,"prosciutto":145,"pancetta":458,
-        "speck":303,"salsiccia":301,"pane":265,"pangrattato":395,"mollica":265,
-        "miele":304,"cioccolato":546,"cacao":228,"mandorle":579,"noci":654,
-        "nocciole":628,"limone":29,"arancia":47,"mela":52,"spinaci":23,
-        "funghi":22,"broccoli":34,"peperoni":31,"peperone":31,"piselli":81,
-        "ceci":164,"fagioli":127,"lenticchie":116,"yogurt":61,"mascarpone":420,
-        "couscous":376,"basilico":23,"prezzemolo":36,"rosmarino":131,"origano":265,
-        "noce moscata":525,"parmigiano reggiano":402,"pecorino":387,
-        "formaggio":350,"scamorza":334,"ricotta":174,"funghi":22,
-        "sedano":16,"carciofi":47,"zucca":26,"cavolfiore":25,"verza":27,
-        "melanzana":25,"pangrattato":395,"farina di mais":370
+        "spaghetti":353,"pasta":353,"penne":353,"tagliatelle":353,"rigatoni":353,
+        "riso":360,"farina":364,"zucchero":400,"olio":884,"burro":717,
+        "uova":143,"uovo":143,"latte":61,"panna":340,"parmigiano":402,"grana":398,
+        "mozzarella":250,"ricotta":174,"passata":30,"pomodoro":18,"pomodori":18,
+        "zucchine":17,"zucchina":17,"melanzane":25,"melanzana":25,"carote":41,
+        "carota":41,"cipolla":40,"cipolle":40,"aglio":149,"patate":77,"patata":77,
+        "pollo":165,"tacchino":135,"manzo":250,"macinato":250,"trita":250,"carne":250,
+        "vitello":172,"maiale":242,"lonza":143,"salsiccia":301,"tonno":132,"salmone":208,
+        "prosciutto":145,"pancetta":458,"speck":303,"mortadella":311,"bresaola":151,
+        "pane":265,"pangrattato":395,"mollica":265,"miele":304,"cioccolato":546,
+        "cacao":228,"mandorle":579,"noci":654,"nocciole":628,"limone":29,"arancia":47,
+        "mela":52,"spinaci":23,"funghi":22,"champignon":22,"broccoli":34,"peperoni":31,
+        "peperone":31,"piselli":81,"ceci":164,"fagioli":127,"lenticchie":116,
+        "yogurt":61,"mascarpone":420,"couscous":376,"prezzemolo":36,"basilico":23,
+        "rosmarino":131,"origano":265,"noce moscata":525,"pecorino":387,
+        "formaggio":350,"scamorza":334,"sedano":16,"carciofi":47,"zucca":26,
+        "cavolfiore":25,"verza":27,"farina di mais":370,"aceto":18,"vino":83,
+        "olive":145,"capperi":23,"acciughe":210,"gamberi":99,"cozze":86,
+        "calamari":92,"cetriolo":15,"lattuga":15,"rucola":25,"radicchio":23,
+        "asparagi":20,"fagiolini":31,"mais":86,"tofu":76,"pesto":400
     }
-    negligible = (
-        "sale", "pepe", "acqua", "prezzemolo", "basilico", "rosmarino",
-        "origano", "salvia", "timo", "erba cipollina", "noce moscata",
-        "cannella", "paprika", "peperoncino", "menta", "alloro"
-    )
+    negligible = ("sale","pepe","acqua","prezzemolo","basilico","rosmarino","origano",
+                  "salvia","timo","erba cipollina","noce moscata","cannella","paprika",
+                  "peperoncino","menta","alloro","chiodi di garofano")
+    count_weights = {
+        "uovo":60,"uova":60,"cipolla":100,"cipolle":100,"carota":80,"carote":80,
+        "patata":150,"patate":150,"pomodoro":120,"pomodori":120,"zucchina":180,
+        "zucchine":180,"melanzana":250,"melanzane":250,"peperone":150,"peperoni":150,
+        "limone":100,"arancia":180,"mela":170
+    }
 
     def norm(value):
         value = unicodedata.normalize("NFKD", str(value).casefold())
@@ -250,62 +256,60 @@ def _estimate_recipe_calories(ingredients, yields):
     pm = re.search(r"\d+(?:[.,]\d+)?", yield_text)
     portions = float(pm.group().replace(",", ".")) if pm else 0
     if portions <= 0 or not isinstance(ingredients, list) or not ingredients:
-        return None
+        return None, False
 
+    units = r"(?:chilogrammi?|kg|grammi?|gr|g|millilitri?|ml|litri?|litro|l|uov[oa]|cucchiai?|cucchiaini?|bicchier[ei]|spicchi?|fette?|foglie?|rametti?|pizzich[io]|mazzetti?|barattoli?|vasetti?|bustine?)"
+    amounts = r"(\d+\s+\d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?|uno|una|un|due|tre|quattro|cinque|sei|mezzo|mezza|½|¼)"
+    words = {"uno":1,"una":1,"un":1,"due":2,"tre":3,"quattro":4,"cinque":5,"sei":6,"mezzo":0.5,"mezza":0.5,"½":0.5,"¼":0.25}
     total = 0.0
     counted = 0
+    skipped = 0
+
     for raw in ingredients:
         if isinstance(raw, dict):
             raw = " ".join(str(raw.get(k, "")) for k in ("value", "unitText", "name", "text"))
-        text = norm(raw)
-        if not text:
+        line = norm(raw).strip()
+        if not line or "q.b." in line or "quanto basta" in line or "a piacere" in line:
             continue
-        if "q.b." in text or "quanto basta" in text:
-            continue
-        # Spezie ed erbe senza quantità hanno un contributo calorico trascurabile.
-        if any(re.search(r"\b" + re.escape(item) + r"\b", text) for item in negligible):
-            if not re.match(r"^\s*\d", text):
-                continue
-            if re.match(r"^\s*\d+(?:[.,]\d+)?\s*(?:g|gr|grammi?)\b", text):
-                continue
-            # Quantità minime di erbe/spezie non incidono in modo apprezzabile.
+        if any(re.search(r"\b" + re.escape(item) + r"\b", line) for item in negligible):
             continue
 
-        m = re.match(
-            r"^\s*(\d+\s+\d+/\d+|\d+/\d+|\d+(?:[.,]\d+)?)\s*"
-            r"(chilogrammi?|kg|grammi?|gr?|millilitri?|ml|litri?|litro|l|uov[oa]|"
-            r"cucchiai?|cucchiaini?|bicchieri?|spicchi?|fette?|foglie?|rametti?|"
-            r"pizzichi?|pizzico|)\b", text
-        )
-        if not m:
-            return None
-        token = m.group(1).strip()
-        if " " in token:
+        match = re.match(r"^\s*" + amounts + r"\s*(" + units + r")?\b", line)
+        if not match:
+            skipped += 1
+            continue
+        token = match.group(1).strip()
+        if token in words:
+            amount = words[token]
+        elif " " in token and "/" in token:
             whole, fraction = token.split()
             amount = float(whole) + float(fraction.split("/")[0]) / float(fraction.split("/")[1])
         elif "/" in token:
             amount = float(token.split("/")[0]) / float(token.split("/")[1])
+        elif re.search(r"[-–]", token):
+            lo, hi = re.split(r"\s*[-–]\s*", token)
+            amount = (float(lo.replace(",", ".")) + float(hi.replace(",", "."))) / 2
         else:
             amount = float(token.replace(",", "."))
-        unit = (m.group(2) or "").strip()
-        rest = text[m.end():].strip(" ,.-")
-        # "uovo/uova" viene consumato come unità dalla regex, ma identifica anche l'alimento.
-        kcal = 143 if unit in ("uovo", "uova") else next(
-            (v for key, v in sorted(foods.items(), key=lambda item: len(item[0]), reverse=True)
-             if re.search(r"\b" + re.escape(key) + r"\b", rest)), None
-        )
-        if kcal is None:
-            # Quantità non misurabili di erbe/spezie possono essere ignorate;
-            # per gli altri ingredienti si evita una stima gravemente incompleta.
-            if any(re.search(r"\b" + re.escape(item) + r"\b", rest) for item in negligible):
-                continue
-            return None
+        unit = (match.group(2) or "").strip()
+        rest = line[match.end():].strip(" ,.-")
 
-        if unit in ("kg", "chilogrammo", "chilogrammi", "l", "litro", "litri"):
+        food_key = next((key for key in sorted(foods, key=len, reverse=True)
+                         if re.search(r"\b" + re.escape(key) + r"\b", rest)), None)
+        if unit in ("uovo", "uova"):
+            food_key = "uova"
+        if food_key is None:
+            skipped += 1
+            continue
+
+        kcal = foods[food_key]
+        if unit in ("kg","chilogrammo","chilogrammi"):
             grams = amount * 1000
-        elif unit in ("ml", "millilitro", "millilitri"):
+        elif unit in ("g","gr","grammo","grammi"):
             grams = amount
-        elif unit in ("uovo", "uova"):
+        elif unit in ("ml","millilitro","millilitri","l","litro","litri"):
+            grams = amount * (1000 if unit in ("l","litro","litri") else 1)
+        elif unit in ("uovo","uova"):
             grams = amount * 60
         elif unit.startswith("cucchiaio"):
             grams = amount * 10
@@ -323,12 +327,22 @@ def _estimate_recipe_calories(ingredients, yields):
             grams = amount * 2
         elif unit.startswith("pizzich"):
             grams = amount * 0.5
+        elif unit.startswith("barattol"):
+            grams = amount * 400
+        elif unit.startswith("vasett"):
+            grams = amount * 125
+        elif unit.startswith("bustin"):
+            grams = amount * 8
+        elif unit.startswith("mazzett"):
+            grams = amount * 30
         else:
-            grams = amount
+            grams = amount * count_weights.get(food_key, 100)
         total += grams * kcal / 100
         counted += 1
 
-    return round(total / portions) if counted else None
+    if not counted:
+        return None, False
+    return round(total / portions), skipped > 0
 
 def extract_recipe(html: str, url: str) -> dict:
     parser = JsonLdParser()
@@ -363,10 +377,12 @@ def extract_recipe(html: str, url: str) -> dict:
     else:
         yields_text = ""
     if calories_estimated:
-        calories_per_serving = _estimate_recipe_calories(
+        calories_per_serving, calories_partial = _estimate_recipe_calories(
             recipe_data.get("recipeIngredient") or [],
             yields_text or None,
         )
+    else:
+        calories_partial = False
 
     return {
         "title": _as_text(recipe_data.get("name")) or "Ricetta",
@@ -380,6 +396,7 @@ def extract_recipe(html: str, url: str) -> dict:
         "yields": yields_text or None,
         "calories_per_serving": calories_per_serving,
         "calories_estimated": bool(calories_estimated and calories_per_serving is not None),
+        "calories_partial": bool(calories_partial),
         "source": urlparse(url).hostname,
         "url": recipe_data.get("url") or url,
     }
