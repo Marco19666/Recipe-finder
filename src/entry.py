@@ -199,6 +199,17 @@ def _minutes(value):
     total = round(hours * 60 + minutes + seconds / 60)
     return total or None
 
+def _calories(value):
+    """Read calories from Schema.org NutritionInformation when explicitly provided."""
+    import re
+    if isinstance(value, (int, float)) and value >= 0:
+        return round(value)
+    if isinstance(value, str):
+        match = re.search(r"\d+(?:[.,]\d+)?", value)
+        if match and ("kcal" in value.lower() or "calor" in value.lower()):
+            return round(float(match.group(0).replace(",", ".")))
+    return None
+
 
 def extract_recipe(html: str, url: str) -> dict:
     parser = JsonLdParser()
@@ -222,11 +233,8 @@ def extract_recipe(html: str, url: str) -> dict:
     elif isinstance(image, dict):
         image = image.get("url") or image.get("contentUrl")
 
-    author = recipe_data.get("author")
-    if isinstance(author, list):
-        author = ", ".join(filter(None, (_as_text(item) for item in author)))
-    else:
-        author = _as_text(author) or None
+    nutrition = recipe_data.get("nutrition")
+    calories_per_serving = _calories(nutrition.get("calories")) if isinstance(nutrition, dict) else None
 
     return {
         "title": _as_text(recipe_data.get("name")) or "Ricetta",
@@ -238,7 +246,7 @@ def extract_recipe(html: str, url: str) -> dict:
         "prep_time": _minutes(recipe_data.get("prepTime")),
         "cook_time": _minutes(recipe_data.get("cookTime")),
         "yields": _as_text(recipe_data.get("recipeYield")) or None,
-        "author": author,
+        "calories_per_serving": calories_per_serving,
         "source": urlparse(url).hostname,
         "url": recipe_data.get("url") or url,
     }
