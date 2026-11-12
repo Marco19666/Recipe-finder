@@ -211,10 +211,14 @@ body[data-theme="dark"] textarea {
 }
 body[data-theme="dark"] .chip,
 body[data-theme="dark"] .favorites-home-button,
-body[data-theme="dark"] .back-home-button,
 body[data-theme="dark"] .utility-toggle {
   color: var(--ink);
   border-color: var(--line);
+}
+body[data-theme="dark"] .back-home-button {
+  background: #b9d8b0;
+  color: #203b24;
+  border-color: #9fc895;
 }
 body[data-theme="dark"] .top-note,
 body[data-theme="dark"] .hero-copy,
@@ -442,7 +446,6 @@ body[data-theme="dark"] .close-button {
 body[data-theme="dark"] .recipe-button,
 body[data-theme="dark"] .shopping-add,
 body[data-theme="dark"] .favorites-home-button,
-body[data-theme="dark"] .back-home-button,
 body[data-theme="dark"] .favorite-toggle {
   background: #303d31;
   color: #e8f2e5;
@@ -450,9 +453,12 @@ body[data-theme="dark"] .favorite-toggle {
 }
 body[data-theme="dark"] .recipe-button:hover,
 body[data-theme="dark"] .shopping-add:hover,
-body[data-theme="dark"] .favorites-home-button:hover,
-body[data-theme="dark"] .back-home-button:hover {
+body[data-theme="dark"] .favorites-home-button:hover {
   background: #3a4b3b;
+}
+body[data-theme="dark"] .back-home-button:hover {
+  background: #c9e3c1;
+  border-color: #afd3a4;
 }
 body[data-theme="dark"] .recipe-panel .source-visit,
 body[data-theme="dark"] .search-form button {
