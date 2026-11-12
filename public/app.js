@@ -9,11 +9,8 @@ function applyTheme(theme) {
   if (themeToggle) {
     themeToggle.textContent = dark ? "☀ Tema chiaro" : "☾ Tema scuro";
     themeToggle.setAttribute("aria-pressed", String(dark));
-    // Colore del pulsante legato direttamente al tema attivo, senza dipendere dalla cascata CSS.
-    themeToggle.style.setProperty("background", dark ? "#edf1e9" : "#304c35", "important");
-    themeToggle.style.setProperty("border-color", dark ? "#d8e0d4" : "#304c35", "important");
-    themeToggle.style.setProperty("color", dark ? "#000" : "#fff", "important");
-    themeToggle.style.setProperty("-webkit-text-fill-color", dark ? "#000" : "#fff", "important");
+    // Il solo sfondo del pulsante tema replica quello del pulsante Schermo sempre acceso.
+    syncThemeButtonBackground();
   }
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#20251f" : "#3f6245");
 }
@@ -25,11 +22,16 @@ themeToggle?.addEventListener("click", () => {
 });
 let wakeLock = null;
 let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
+function syncThemeButtonBackground() {
+  if (!themeToggle || !wakeToggle) return;
+  themeToggle.style.setProperty("background-color", getComputedStyle(wakeToggle).backgroundColor, "important");
+}
 function updateWakeButton() {
   if (!wakeToggle) return;
   wakeToggle.textContent = wakeEnabled ? "✓ Schermo sempre acceso" : "♧ Schermo sempre acceso";
   wakeToggle.setAttribute("aria-pressed", String(wakeEnabled));
   wakeToggle.classList.toggle("is-active", wakeEnabled);
+  syncThemeButtonBackground();
 }
 async function requestWakeLock() {
   if (!wakeEnabled || document.visibilityState !== "visible" || !("wakeLock" in navigator)) return;
