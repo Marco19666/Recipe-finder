@@ -539,3 +539,24 @@ body[data-theme="dark"] .try-recipes-section { color: var(--text-primary); }
   .try-recipes-section .results-grid { grid-template-columns: 1fr; }
   .try-recipes-section .result-card .result-image { height: 205px; }
 }
+
+.suggestion-category {
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 0 0 9px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+body[data-theme="dark"] .suggestion-category {
+  color: var(--text-accent);
+  background: #29342b;
+  border-color: #465647;
+}
+.suggestion-unavailable { opacity: .78; }
