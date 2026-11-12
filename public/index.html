@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=25">
+  <link rel="stylesheet" href="/styles.css?v=26">
 </head>
 <body>
   <header class="topbar">
@@ -46,7 +46,7 @@
         </div>
       </div>
       <div class="home-actions"><button id="show-favorites" class="favorites-home-button" type="button">♡ Ricette preferite <span id="favorites-count">0</span></button><button id="show-personal" class="favorites-home-button" type="button">＋ Le mie ricette <span id="personal-count">0</span></button><button id="show-shopping" class="favorites-home-button" type="button">🛒 Lista della spesa <span id="shopping-count">0</span></button><button id="show-history" class="favorites-home-button" type="button">⌕ Ultime ricerche</button></div>
-      <div class="popular"><span>PROVA:</span><button class="chip" data-query="pasta alla carbonara">Carbonara</button><button class="chip" data-query="torta di mele">Torta di mele</button><button class="chip" data-query="polpette al sugo">Polpette</button></div>
+      <section class="try-recipes-section" aria-labelledby="try-recipes-title"><div class="section-heading"><div><div class="eyebrow">CINQUE IDEE NUOVE OGNI GIORNO</div><h2 id="try-recipes-title">Prova oggi</h2></div><span id="try-recipes-count" class="result-count">5 ricette da scoprire</span></div><div id="try-recipes" class="results-grid"><div class="empty-state">Sto preparando le idee di oggi...</div></div></section>
       <div class="source-line"><span class="source-dot"></span> Fonti selezionate: Misya, Cookist, Cucchiaio d'Argento e altri</div>
     </section>
     <section id="results-section" class="results-section" hidden>
@@ -101,6 +101,6 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <footer><span>Cosa Cucino?</span><span>Le ricette restano di proprietà dei rispettivi editori. Visita la fonte originale.</span></footer>
-  <script src="/app.js?v=28" defer></script>
+  <script src="/app.js?v=29" defer></script>
 </body>
 </html>
