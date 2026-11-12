@@ -440,12 +440,8 @@ async def chef_status(request: Request, device_id: str = Query(min_length=16, ma
     if not re.fullmatch(r"[A-Za-z0-9-]{16,100}", device_id): raise HTTPException(status_code=400, detail="Identificativo dispositivo non valido.")
     from datetime import datetime
     from zoneinfo import ZoneInfo
-    env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
-    stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
-    response=await stub.fetch("https://chef-limiter/status?day="+day)
-    data=await response.json()
-    remaining=data.get("remaining",0) if isinstance(data,dict) else getattr(data,"remaining",0)
-    return {"remaining":int(remaining)}
+    # Durante la fase di test le domande sono illimitate: il contatore giornaliero è sospeso.
+    return {"remaining":None,"unlimited":True}
 
 @app.post("/api/chef/ask")
 async def chef_ask(request: Request):
@@ -467,13 +463,8 @@ async def chef_ask(request: Request):
     if not clean or clean[-1]["role"]!="user": raise HTTPException(status_code=400, detail="La domanda non è valida.")
     if not _chef_is_cooking_topic(clean):
         return {"answer":"Posso aiutarti soltanto con argomenti di cucina: ricette, ingredienti, tecniche e consigli ai fornelli. Qual è il piatto che vuoi preparare?","remaining":None,"off_topic":True}
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-    env=request.scope["env"]; day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
-    stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
-    quota_response=await stub.fetch("https://chef-limiter/consume?day="+day)
-    quota=await quota_response.json()
-    if quota_response.status==429: raise HTTPException(status_code=429,detail="Hai raggiunto le 3 domande di oggi. Torna domani!",headers={"X-Chef-Remaining":"0"})
+    env=request.scope["env"]
+    # Limite giornaliero disattivato temporaneamente durante i test.
     try:
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":450,"temperature":0.55,"chat_template_kwargs":{"enable_thinking":False}}))
         def result_field(value, key, default=None):
@@ -496,10 +487,8 @@ async def chef_ask(request: Request):
             answer="".join(str(result_field(part,"text","")) for part in answer)
         if not isinstance(answer,str) or not answer.strip():
             raise RuntimeError("Workers AI ha restituito una risposta senza testo.")
-        remaining=quota.get("remaining",0) if isinstance(quota,dict) else getattr(quota,"remaining",0)
-        return {"answer":answer.strip(),"remaining":int(remaining)}
+        return {"answer":answer.strip(),"remaining":None}
     except Exception as exc:
-        await stub.fetch("https://chef-limiter/refund?day="+day)
         raise HTTPException(status_code=503,detail="Lo chef è momentaneamente occupato. Riprova tra poco.") from exc
 
 
