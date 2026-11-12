@@ -717,3 +717,20 @@ body[data-theme="dark"] .utility-toggle.is-active {
   color: #000 !important;
   -webkit-text-fill-color: #000 !important;
 }
+
+
+/* Colore dei due pulsanti determinato esclusivamente dal tema selezionato. */
+body:not([data-theme="dark"]) .utility-toggle,
+body:not([data-theme="dark"]) .utility-toggle.is-active {
+  background: #edf1e9 !important;
+  border-color: #d8e0d4 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
+body[data-theme="dark"] .utility-toggle,
+body[data-theme="dark"] .utility-toggle.is-active {
+  background: #304c35 !important;
+  border-color: #304c35 !important;
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+}
