@@ -604,3 +604,11 @@ body[data-theme="dark"] .chef-intro{background:linear-gradient(120deg,#29392a,#3
 .chef-home-arrow{font-size:22px;font-weight:700}
 @media(max-width:520px){.chef-home-button{min-width:100%;justify-content:flex-start;padding:12px 15px}.home-actions{gap:9px}}
 body[data-theme="dark"] .chef-home-button{border-color:#789c70;background:linear-gradient(115deg,#294b30,#416844)}
+
+
+/* Home layout: chef centered above the four secondary shortcuts. */
+.home-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:12px;max-width:1040px}
+.home-actions .chef-home-button{grid-column:1/-1;justify-self:center;width:min(420px,100%);min-width:0}
+.home-actions .favorites-home-button{width:100%;min-width:0;white-space:normal}
+@media(max-width:760px){.home-actions{grid-template-columns:repeat(2,minmax(0,1fr));max-width:620px}.home-actions .chef-home-button{grid-column:1/-1}}
+@media(max-width:380px){.home-actions{gap:8px}.home-actions .favorites-home-button{padding:11px 8px;font-size:11px}}
