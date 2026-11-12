@@ -788,3 +788,16 @@ body[data-theme="dark"] .back-home-button:hover {
   background: #cfe3c6 !important;
   border-color: #a8c79d !important;
 }
+
+/* In tema scuro, il pulsante per cambiare tema resta verde chiaro. */
+body[data-theme="dark"] button#theme-toggle,
+body[data-theme="dark"] button#theme-toggle.is-active {
+  background-color: #dcebd5 !important;
+  border-color: #b8d1ae !important;
+  color: #294b2d !important;
+  -webkit-text-fill-color: #294b2d !important;
+}
+body[data-theme="dark"] button#theme-toggle:hover {
+  background-color: #cfe3c6 !important;
+  border-color: #a8c79d !important;
+}
