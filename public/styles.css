@@ -612,3 +612,6 @@ body[data-theme="dark"] .chef-home-button{border-color:#789c70;background:linear
 .home-actions .favorites-home-button{width:100%;min-width:0;white-space:normal}
 @media(max-width:760px){.home-actions{grid-template-columns:repeat(2,minmax(0,1fr));max-width:620px}.home-actions .chef-home-button{grid-column:1/-1}}
 @media(max-width:380px){.home-actions{gap:8px}.home-actions .favorites-home-button{padding:11px 8px;font-size:11px}}
+
+/* In modalità scura, il testo delle domande inviate dall’utente resta nero e leggibile. */
+body[data-theme="dark"] .chef-message--user{background:#d7e6d0;color:#000!important;}
