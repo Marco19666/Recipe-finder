@@ -237,7 +237,7 @@ def _estimate_recipe_calories(ingredients, yields):
         return "".join(ch for ch in value if not unicodedata.combining(ch))
 
     # recipeYield può essere una stringa ("4 porzioni") oppure un numero.
-    yield_text = " ".join(str(v) for v in yields) if isinstance(yields, list) else str(yields or "")
+    yield_text = " ".join(_as_text(v) or str(v) for v in yields) if isinstance(yields, list) else str(yields or "")
     pm = re.search(r"\d+(?:[.,]\d+)?", yield_text)
     portions = float(pm.group().replace(",", ".")) if pm else 0
     if portions <= 0 or not isinstance(ingredients, list) or not ingredients:
@@ -268,9 +268,9 @@ def _estimate_recipe_calories(ingredients, yields):
         if kcal is None:
             return None
 
-        if unit in ("kg", "l", "litro", "litri"):
+        if unit in ("kg", "chilogrammo", "chilogrammi", "l", "litro", "litri"):
             grams = amount * 1000
-        elif unit == "ml":
+        elif unit in ("ml", "millilitro", "millilitri"):
             grams = amount  # densità approssimata a 1 g/ml
         elif unit in ("uovo", "uova"):
             grams = amount * 60
@@ -322,7 +322,7 @@ def extract_recipe(html: str, url: str) -> dict:
     calories_estimated = calories_per_serving is None
     yield_value = recipe_data.get("recipeYield")
     if isinstance(yield_value, list):
-        yields_text = " ".join(_as_text(value) for value in yield_value if _as_text(value))
+        yields_text = " ".join((_as_text(value) or str(value)) for value in yield_value if value is not None)
     elif yield_value is not None:
         yields_text = _as_text(yield_value) or str(yield_value)
     else:
