@@ -523,7 +523,7 @@ async def archimede_ask(request: Request):
         raise HTTPException(status_code=400, detail="Inserisci gli ingredienti (massimo 1200 caratteri).")
     env = request.scope["env"]
     user_prompt = (
-        "Categoria richiesta: " + category + ".\\n"
+        "Categoria richiesta: " + category + ".\n"
         "Ingredienti dichiarati dall'utente (e soltanto questi sono disponibili): "
         + ingredients
         + ".\\nPrepara una ricetta adatta a questa categoria."
@@ -564,7 +564,7 @@ async def archimede_ask(request: Request):
             raise RuntimeError("Workers AI non ha restituito una ricetta.")
         raw = answer.strip()
         if raw.startswith("```"):
-            raw = raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+            raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         try:
             recipe = json.loads(raw)
         except json.JSONDecodeError:
