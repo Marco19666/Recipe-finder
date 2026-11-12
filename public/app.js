@@ -24,7 +24,7 @@ let wakeLock = null;
 let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
 function syncThemeButtonBackground() {
   if (!themeToggle || !wakeToggle) return;
-  themeToggle.style.setProperty("background-color", getComputedStyle(wakeToggle).backgroundColor, "important");
+  themeToggle.classList.toggle("is-active", wakeEnabled);
 }
 function updateWakeButton() {
   if (!wakeToggle) return;
