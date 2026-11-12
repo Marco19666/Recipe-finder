@@ -255,3 +255,44 @@ button, input, select, textarea, label, strong, b, .result-count, .eyebrow { fon
   .top-note { display:none; }
   .utility-toggle { font-size:11px; padding:8px; }
 }
+
+
+/* Correzione legenda e selettore dei siti: spaziatura e colori adattivi. */
+.site-chooser {
+  margin-top: 20px;
+  padding: 16px 18px 18px;
+  background: var(--card);
+  border-color: var(--line);
+}
+.site-chooser legend {
+  display: table;
+  max-width: calc(100% - 24px);
+  margin: 0 0 8px 0;
+  padding: 0 9px;
+  background: var(--paper);
+  color: var(--green);
+  line-height: 1.5;
+}
+.site-options {
+  row-gap: 12px;
+}
+.site-option {
+  color: var(--ink);
+}
+body[data-theme="dark"] .site-chooser {
+  background: var(--card);
+  border-color: var(--line);
+}
+body[data-theme="dark"] .site-chooser legend {
+  background: var(--paper);
+  color: var(--green);
+}
+@media (max-width: 520px) {
+  .site-chooser {
+    margin-top: 18px;
+    padding: 15px 13px 16px;
+  }
+  .site-chooser legend {
+    margin-bottom: 9px;
+  }
+}
