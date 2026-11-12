@@ -1,3 +1,72 @@
+
+const themeToggle = document.querySelector("#theme-toggle");
+const wakeToggle = document.querySelector("#wake-toggle");
+const THEME_KEY = "recipe-finder-theme-v1";
+const WAKE_KEY = "recipe-finder-wake-lock-v1";
+function applyTheme(theme) {
+  const dark = theme === "dark";
+  document.body.dataset.theme = dark ? "dark" : "light";
+  if (themeToggle) {
+    themeToggle.textContent = dark ? "☀ Tema chiaro" : "☾ Tema scuro";
+    themeToggle.setAttribute("aria-pressed", String(dark));
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#20251f" : "#3f6245");
+}
+applyTheme(localStorage.getItem(THEME_KEY) || "light");
+themeToggle?.addEventListener("click", () => {
+  const next = document.body.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+let wakeLock = null;
+let wakeEnabled = localStorage.getItem(WAKE_KEY) === "true";
+function updateWakeButton() {
+  if (!wakeToggle) return;
+  wakeToggle.textContent = wakeEnabled ? "✓ Schermo sempre acceso" : "♧ Schermo sempre acceso";
+  wakeToggle.setAttribute("aria-pressed", String(wakeEnabled));
+  wakeToggle.classList.toggle("is-active", wakeEnabled);
+}
+async function requestWakeLock() {
+  if (!wakeEnabled || document.visibilityState !== "visible" || !("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch (error) {
+    if (wakeEnabled) notify("Il telefono o il browser non consentono di mantenere lo schermo acceso.");
+  }
+}
+async function releaseWakeLock() {
+  if (wakeLock) {
+    try { await wakeLock.release(); } catch (_) {}
+    wakeLock = null;
+  }
+}
+wakeToggle?.addEventListener("click", async () => {
+  wakeEnabled = !wakeEnabled;
+  localStorage.setItem(WAKE_KEY, String(wakeEnabled));
+  updateWakeButton();
+  if (wakeEnabled) {
+    if (!("wakeLock" in navigator)) {
+      wakeEnabled = false;
+      localStorage.setItem(WAKE_KEY, "false");
+      updateWakeButton();
+      notify("Questa versione del browser non supporta lo schermo sempre acceso.");
+      return;
+    }
+    await requestWakeLock();
+    if (wakeEnabled) notify("Schermo sempre acceso attivato.");
+  } else {
+    await releaseWakeLock();
+    notify("Schermo sempre acceso disattivato.");
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") requestWakeLock();
+  else releaseWakeLock();
+});
+updateWakeButton();
+if (wakeEnabled) requestWakeLock();
+
 const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#query");
 const resultsSection = document.querySelector("#results-section");
