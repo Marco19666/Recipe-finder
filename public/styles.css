@@ -149,7 +149,7 @@ footer span:first-child{font-family:"Playfair Display",Georgia,serif;font-size:1
 }
 
 /* Installazione come app su Android */
-.top-actions{display:flex;align-items:center;gap:14px}.install-app-button{border:1px solid var(--green);background:var(--green);color:#fff;border-radius:8px;padding:9px 13px;font:600 12px "DM Sans";cursor:pointer}.install-app-button:hover{background:var(--green-dark)}.install-app-button[hidden]{display:none!important}@media(max-width:520px){.top-actions{gap:0}.install-app-button{padding:9px 11px;font-size:11px}}
+.top-actions{display:flex;align-items:center;gap:14px}.install-app-button{border:1px solid var(--green);background:var(--green);color:#fff;border-radius:8px;padding:9px 13px;font:600 12px "DM Sans";cursor:pointer}.install-app-button:hover,.install-app-button:active,.install-app-button:focus,.install-app-button:focus-visible{background:var(--green)!important;border-color:var(--green)!important;color:#fff!important;box-shadow:none;outline:none}.install-app-button[hidden]{display:none!important}@media(max-width:520px){.top-actions{gap:0}.install-app-button{padding:9px 11px;font-size:11px}}
 
 
 /* Ricerca sequenziale con avanzamento reale */
