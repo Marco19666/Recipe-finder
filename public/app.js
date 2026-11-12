@@ -398,13 +398,12 @@ async function loadRecipe(url, fallback = {}) {
     const instructions = Array.isArray(data.instructions) ? data.instructions : [data.instructions].filter(Boolean);
     const meta = [
       data.total_time ? "Tempo totale: " + data.total_time + " min" : "",
-      data.yields ? "Dosi: " + data.yields : "",
-      data.author ? "Autore: " + data.author : ""
+      "Porzioni: " + (data.yields || "non indicate")
     ].filter(Boolean).map(esc).join(" · ");
     const image = data.image ? '<img class="recipe-image" src="' + esc(data.image) + '" alt="" referrerpolicy="no-referrer">' : "";
     const ingredientList = ingredients.length ? "<ul>" + ingredients.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "<p>Ingredienti non disponibili in formato leggibile.</p>";
     const steps = instructions.length ? "<ol>" + instructions.map(item => "<li>" + esc(item) + "</li>").join("") + "</ol>" : "<p>Procedimento non disponibile in formato leggibile.</p>";
-    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, category: fallback.category || "Altro" };
+    const savedItem = { url, title: data.title || fallback.title || "Ricetta", image: data.image || fallback.image || "", source: data.source || fallback.source || "", description: fallback.description || "", ingredients, yields: data.yields || null, total_time: data.total_time || null, category: fallback.category || "Altro" };
     if (isFavorite(url)) { saveFavorites(getFavorites().map(item => item.url === url ? { ...item, ...savedItem } : item)); }
     recipeContent.innerHTML = '<span class="result-source">' + esc(data.source || fallback.source || "Fonte originale") + '</span>' +
       '<h2 id="recipe-title">' + esc(data.title || fallback.title || "Ricetta") + '</h2><div class="recipe-meta">' + meta + '</div>' +
