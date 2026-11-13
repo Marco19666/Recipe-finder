@@ -966,3 +966,14 @@ body[data-theme="dark"] .quantospendo-home-button{border-color:#d59a53;backgroun
 .quantospendo-section{max-width:920px}
 .quantospendo-submit{background:#a96527!important;border-color:#a96527!important}
 body[data-theme="dark"] .quantospendo-submit{background:#a96527!important;border-color:#a96527!important}
+
+
+/* QuantoSpendo: identità rosso corallo. */
+.quantospendo-home-button{border-color:#e65b55;background:linear-gradient(115deg,#c83f49,#ff7668);box-shadow:0 8px 22px #c83f4938}
+.quantospendo-home-button:hover{box-shadow:0 12px 26px #c83f4950}
+body[data-theme="dark"] .quantospendo-home-button{border-color:#ff8a7d;background:linear-gradient(115deg,#a83240,#df5b59)}
+.quantospendo-submit{background:#df514f!important;border-color:#df514f!important}
+body[data-theme="dark"] .quantospendo-submit{background:#df514f!important;border-color:#df514f!important}
+.quantospendo-section .salvasoldi-form input:focus,
+.quantospendo-section .salvasoldi-form select:focus,
+.quantospendo-section .salvasoldi-form textarea:focus{outline-color:#ffaaa0;border-color:#e65b55}
