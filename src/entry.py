@@ -425,7 +425,6 @@ class ChefDailyLimiter(DurableObject):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(request.url); params = parse_qs(parsed.query)
         day = (params.get("day") or [""])[0]
-        if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         if parsed.path.startswith("/salvasoldi-"):
             section = (params.get("section") or [""])[0]
             if section not in ("create_menu", "calculate_cost"):
@@ -440,6 +439,7 @@ class ChefDailyLimiter(DurableObject):
             if count >= 2: return WorkerResponse.json({"remaining":0}, status=429)
             self.ctx.storage.sql.exec("INSERT INTO salvasoldi_section_usage(section,count) VALUES(?,1) ON CONFLICT(section) DO UPDATE SET count=count+1", section)
             return WorkerResponse.json({"remaining":1-count})
+        if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
         count = int(row.count)
         if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,5-count)})
