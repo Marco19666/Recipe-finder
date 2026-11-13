@@ -57,6 +57,26 @@
     if(alternatives.length) html+='<div class="salvasoldi-alternatives"><h4>Idee per risparmiare</h4><ul>'+alternatives.map(a=>'<li>'+safe(typeof a==="string"?a:(a.description||a.suggestion||a.name||""))+'</li>').join("")+'</ul></div>';
     html+='</article>'; targetResults.innerHTML=html;
   }
+  const quotaKeys={budget:"create_menu",cost:"calculate_cost"};
+  const quotaLabels={};
+  const quotaButtons={budget:ids("budget-form").querySelector('button[type="submit"]'),cost:ids("cost-form").querySelector('button[type="submit"]')};
+  for(const [key,formId] of [["budget","budget-form"],["cost","cost-form"]]){
+    const label=document.createElement("p");label.className="salvasoldi-quota";label.setAttribute("role","status");
+    ids(formId).appendChild(label);quotaLabels[key]=label;
+  }
+  function updateQuota(key,remaining){
+    const label=quotaLabels[key],button=quotaButtons[key];
+    label.textContent=remaining+" di 2 ricerche disponibili";
+    button.disabled=remaining<=0;
+    if(remaining<=0)label.textContent="Hai esaurito le 2 ricerche disponibili in "+(key==="budget"?"SalvaSoldi.":"QuantoSpendo.");
+  }
+  async function refreshQuotas(){
+    for(const key of ["budget","cost"]){
+      try{const r=await fetch("/api/salvasoldi/status?device_id="+encodeURIComponent(deviceId())+"&mode="+quotaKeys[key],{cache:"no-store"});const d=await r.json();if(r.ok)updateQuota(key,d.remaining);}
+      catch(_){quotaLabels[key].textContent="Limite: 2 ricerche per dispositivo";}
+    }
+  }
+  refreshQuotas();
   async function request(payload,button,mode,targetStatus=status,targetResults=results) {
     button.disabled=true; button.textContent="Sto elaborando...";
     targetResults.innerHTML=""; setStatus("Sto preparando il calcolo. Potrebbe richiedere qualche secondo.",false,targetStatus);
@@ -66,9 +86,9 @@
       if(!type.includes("application/json")) throw new Error("Il servizio SalvaSoldi non è ancora configurato sul server. È necessaria l'attivazione dell'endpoint AI /api/salvasoldi.");
       const data=await response.json();
       if(!response.ok) throw new Error(data.detail||data.error||"Non è stato possibile completare il calcolo.");
-      renderResult(data,mode,targetResults); targetStatus.hidden=true;
+      renderResult(data,mode,targetResults); targetStatus.hidden=true;\n      updateQuota(mode==="budget"?"budget":"cost",Number(data.remaining??0));
     } catch(error) {
-      setStatus(error.message||"Errore durante la richiesta. Riprova più tardi.",true,targetStatus);
+      setStatus(error.message||"Errore durante la richiesta. Riprova più tardi.",true,targetStatus);\n      if(error && /esaurito le 2 ricerche/i.test(error.message))updateQuota(mode==="budget"?"budget":"cost",0);
     } finally {
       button.disabled=false;
       button.textContent=mode==="budget"?"Crea il mio menu ↗":"Calcola la spesa ↗";
