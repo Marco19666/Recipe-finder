@@ -902,13 +902,13 @@ body[data-theme="dark"] button#install-app:focus-visible {
 
 
 /* SalvaSoldi */
-.salvasoldi-home-button{display:flex;grid-column:1/-1;align-items:center;justify-self:center;gap:13px;width:min(420px,100%);padding:12px 18px;border:2px solid var(--green);border-radius:14px;background:linear-gradient(115deg,#355b3b,#527b50);color:#fff;text-align:left;cursor:pointer;box-shadow:0 8px 22px #304c352e;transition:transform .18s,box-shadow .18s}
-.salvasoldi-home-button:hover{transform:translateY(-2px);box-shadow:0 12px 26px #304c3540}
+.salvasoldi-home-button{display:flex;grid-column:1/-1;align-items:center;justify-self:center;gap:13px;width:min(420px,100%);padding:12px 18px;border:2px solid #247b86;border-radius:14px;background:linear-gradient(115deg,#155b68,#238b91);color:#fff;text-align:left;cursor:pointer;box-shadow:0 8px 22px #155b682e;transition:transform .18s,box-shadow .18s}
+.salvasoldi-home-button:hover{transform:translateY(-2px);box-shadow:0 12px 26px #155b6840}
 .salvasoldi-home-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:12px;background:#ffffff20;color:#fff;font:700 27px "DM Sans"}
 .salvasoldi-home-copy{display:flex;flex:1;flex-direction:column;gap:3px}
 .salvasoldi-home-copy strong{font:700 15px "DM Sans"}
 .salvasoldi-home-copy small{font:500 10px/1.4 "DM Sans";color:#e6f0e2}
-body[data-theme="dark"] .salvasoldi-home-button{border-color:#789c70;background:linear-gradient(115deg,#294b30,#416844)}
+body[data-theme="dark"] .salvasoldi-home-button{border-color:#3d9ba4;background:linear-gradient(115deg,#124c58,#176e75)}
 @media(max-width:520px){.salvasoldi-home-button{width:100%;padding:12px 15px}}
 .salvasoldi-section{max-width:920px}
 .salvasoldi-tabs{display:flex;gap:10px;margin:24px 0 18px;border-bottom:1px solid var(--line)}
@@ -953,3 +953,16 @@ body[data-theme="dark"] .salvasoldi-alternatives{background:#333329}
 .salvasoldi-budget-result.is-over{background:#fff0df;color:#89551c}
 body[data-theme="dark"] .salvasoldi-budget-result.is-within{background:#293b2d;color:#d6e5d2}
 body[data-theme="dark"] .salvasoldi-budget-result.is-over{background:#493724;color:#f4d2a4}
+
+/* QuantoSpendo: strumento autonomo, con identità visiva distinta. */
+.quantospendo-home-button{display:flex;grid-column:1/-1;align-items:center;justify-self:center;gap:13px;width:min(420px,100%);padding:12px 18px;border:2px solid #b77a31;border-radius:14px;background:linear-gradient(115deg,#87501f,#c17d32);color:#fff;text-align:left;cursor:pointer;box-shadow:0 8px 22px #87501f2e;transition:transform .18s,box-shadow .18s}
+.quantospendo-home-button:hover{transform:translateY(-2px);box-shadow:0 12px 26px #87501f40}
+.quantospendo-home-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:12px;background:#ffffff24;font-size:25px}
+.quantospendo-home-copy{display:flex;flex:1;flex-direction:column;gap:3px}
+.quantospendo-home-copy strong{font:700 15px "DM Sans"}
+.quantospendo-home-copy small{font:500 10px/1.4 "DM Sans";color:#fff0df}
+body[data-theme="dark"] .quantospendo-home-button{border-color:#d59a53;background:linear-gradient(115deg,#704019,#a96725)}
+@media(max-width:520px){.quantospendo-home-button{width:100%;padding:12px 15px}}
+.quantospendo-section{max-width:920px}
+.quantospendo-submit{background:#a96527!important;border-color:#a96527!important}
+body[data-theme="dark"] .quantospendo-submit{background:#a96527!important;border-color:#a96527!important}
