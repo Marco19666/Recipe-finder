@@ -977,3 +977,17 @@ body[data-theme="dark"] .quantospendo-submit{background:#df514f!important;border
 .quantospendo-section .salvasoldi-form input:focus,
 .quantospendo-section .salvasoldi-form select:focus,
 .quantospendo-section .salvasoldi-form textarea:focus{outline-color:#ffaaa0;border-color:#e65b55}
+
+
+/* Chef-AI: accesso principale in home, con richiamo animato discreto. */
+.chefai-home-button{position:relative;isolation:isolate;display:flex;grid-column:1/-1;align-items:center;justify-self:center;gap:13px;width:min(420px,100%);padding:12px 18px;border:2px solid #63aaa4;border-radius:14px;background:linear-gradient(115deg,#174f53,#247b78);color:#fff;text-align:left;text-decoration:none;box-shadow:0 8px 22px #174f5338;animation:chefai-home-pulse 2.4s ease-in-out infinite;transition:transform .18s,box-shadow .18s}
+.chefai-home-button:hover{transform:translateY(-2px);box-shadow:0 12px 28px #174f5350}
+.chefai-home-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:12px;background:#ffffff24;font-size:25px}
+.chefai-home-copy{display:flex;flex:1;flex-direction:column;gap:3px}
+.chefai-home-copy strong{font:700 15px "DM Sans"}
+.chefai-home-copy small{font:500 10px/1.4 "DM Sans";color:#d9f0ed}
+.chefai-home-arrow{font-size:22px;font-weight:700}
+@keyframes chefai-home-pulse{0%,100%{box-shadow:0 8px 22px #174f5330;filter:brightness(1)}50%{box-shadow:0 9px 27px #247b7870;filter:brightness(1.09)}}
+body[data-theme="dark"] .chefai-home-button{border-color:#65b9b0;background:linear-gradient(115deg,#123f43,#1d6865)}
+@media(max-width:520px){.chefai-home-button{width:100%;padding:12px 15px}}
+@media(prefers-reduced-motion:reduce){.chefai-home-button{animation:none}}
