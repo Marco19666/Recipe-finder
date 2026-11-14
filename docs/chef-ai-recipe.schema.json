@@ -12,7 +12,8 @@
     "ingredients",
     "equipment",
     "steps",
-    "validation"
+    "validation",
+    "completeness_check"
   ],
   "properties": {
     "name": {
@@ -23,14 +24,23 @@
     "servings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["original", "requested"],
+      "required": [
+        "original",
+        "requested"
+      ],
       "properties": {
         "original": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "exclusiveMinimum": 0
         },
         "requested": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "exclusiveMinimum": 0,
           "description": "Set only after the user confirms how many portions are needed."
         },
@@ -43,11 +53,33 @@
     "times": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["preparation_minutes", "cooking_minutes", "total_minutes"],
+      "required": [
+        "preparation_minutes",
+        "cooking_minutes",
+        "total_minutes"
+      ],
       "properties": {
-        "preparation_minutes": {"type": ["number", "null"], "minimum": 0},
-        "cooking_minutes": {"type": ["number", "null"], "minimum": 0},
-        "total_minutes": {"type": ["number", "null"], "minimum": 0}
+        "preparation_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cooking_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
       }
     },
     "ingredients": {
@@ -55,22 +87,41 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "quantity", "unit", "scaling"],
+        "required": [
+          "name",
+          "quantity",
+          "unit",
+          "scaling"
+        ],
         "properties": {
-          "name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
           "quantity": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0,
             "description": "Null when the source does not specify a reliable quantity."
           },
           "unit": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "maxLength": 40,
             "description": "Normalized unit, e.g. g, kg, ml, l, piece, teaspoon."
           },
           "scaling": {
             "type": "string",
-            "enum": ["linear", "manual_review", "not_scaled"],
+            "enum": [
+              "linear",
+              "manual_review",
+              "not_scaled"
+            ],
             "description": "AI must not blindly scale ingredients marked manual_review or not_scaled."
           }
         }
@@ -78,7 +129,11 @@
     },
     "equipment": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1, "maxLength": 100},
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
       "uniqueItems": true
     },
     "steps": {
@@ -87,15 +142,54 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["order", "instruction", "timer_seconds", "temperature_c", "cooking_mode"],
+        "required": [
+          "order",
+          "instruction",
+          "timer_seconds",
+          "temperature_c",
+          "cooking_mode"
+        ],
         "properties": {
-          "order": {"type": "integer", "minimum": 1},
-          "instruction": {"type": "string", "minLength": 1, "maxLength": 1200},
-          "timer_seconds": {"type": ["integer", "null"], "minimum": 1},
-          "temperature_c": {"type": ["number", "null"], "minimum": -30, "maximum": 350},
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1200
+          },
+          "timer_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "temperature_c": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -30,
+            "maximum": 350
+          },
           "cooking_mode": {
-            "type": ["string", "null"],
-            "enum": ["static", "fan", "grill", "hob", "boiling", "frying", "steaming", "other", null]
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "static",
+              "fan",
+              "grill",
+              "hob",
+              "boiling",
+              "frying",
+              "steaming",
+              "other",
+              null
+            ]
           }
         }
       }
@@ -103,22 +197,129 @@
     "validation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "issues"],
+      "required": [
+        "status",
+        "issues"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["da_elaborare", "in_elaborazione", "da_verificare", "pronta", "errore"]
+          "enum": [
+            "da_elaborare",
+            "in_elaborazione",
+            "da_verificare",
+            "pronta",
+            "errore"
+          ]
         },
         "issues": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["field", "severity", "message"],
+            "required": [
+              "field",
+              "severity",
+              "message"
+            ],
             "properties": {
-              "field": {"type": "string", "minLength": 1},
-              "severity": {"type": "string", "enum": ["info", "warning", "blocking"]},
-              "message": {"type": "string", "minLength": 1, "maxLength": 300}
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "blocking"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              }
+            }
+          }
+        }
+      }
+    },
+    "completeness_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "findings"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "needs_review",
+            "blocking"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "category",
+              "severity",
+              "description",
+              "evidence",
+              "suggested_action",
+              "resolved"
+            ],
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "ingredient_missing",
+                  "step_missing",
+                  "quantity_missing",
+                  "timing_missing",
+                  "temperature_missing",
+                  "equipment_missing",
+                  "sequence_issue",
+                  "contradiction",
+                  "unclear_instruction",
+                  "other"
+                ]
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "blocking"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "evidence": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 500
+              },
+              "suggested_action": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 500
+              },
+              "resolved": {
+                "type": "boolean"
+              }
             }
           }
         }
