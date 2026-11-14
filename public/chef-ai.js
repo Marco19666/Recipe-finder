@@ -124,3 +124,16 @@ $('#recipe-file').onchange=async event=>{
   $('#file-text').value=await file.text();say('File caricato. Ora puoi controllare la ricetta.');
 };
 $('#ai-btn').onclick=()=>standardize({request:$('#ai-prompt').value});
+
+function offerResume(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+    if(!saved||!saved.recipe||!Number.isInteger(saved.servings)||!saved.recipe.steps?.length)return;
+    const resume=node('button','↻ Riprendi la sessione salvata');
+    resume.className='chefai-action';resume.type='button';
+    resume.onclick=()=>startGuide(saved.recipe,saved.servings,Number(saved.step)||0);
+    const notice=node('div');notice.className='chefai-status';notice.append(node('p','Hai una sessione Chef Guidato salvata su questo dispositivo.'));
+    notice.append(resume);result.prepend(notice);
+  }catch(_){}
+}
+offerResume();
