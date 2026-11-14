@@ -48,7 +48,12 @@ function render(recipe){
   result.append(node('p',(recipe.equipment||[]).join(', ')||'Non specificata'));
   result.append(node('h3','Procedimento'));
   (recipe.steps||[]).forEach(step=>result.append(node('p',step.order+'. '+step.instruction)));
-  const blocked=audit.status==='blocking'||recipe.validation?.status==='errore'||findings.some(f=>f.severity==='blocking'&&!f.resolved);
+  const validationIssues=Array.isArray(recipe.validation?.issues)?recipe.validation.issues:[];
+  validationIssues.forEach(issue=>{
+    const label=issue.severity==='blocking'?'Da risolvere':issue.severity==='warning'?'Da verificare':'Nota';
+    result.append(node('p',label+': '+(issue.message||'Problema di validazione')));
+  });
+  const blocked=audit.status==='blocking'||recipe.validation?.status==='errore'||findings.some(f=>f.severity==='blocking'&&!f.resolved)||validationIssues.some(issue=>issue.severity==='blocking');
   if(blocked){result.append(node('p','La ricetta presenta problemi bloccanti: occorre chiarirli o correggerli prima di avviare la guida.'));return}
   const panel=node('div');panel.append(node('h3','Quante porzioni vuoi preparare?'));
   const input=node('input');input.type='number';input.min='1';input.max='50';input.step='1';input.inputMode='numeric';input.value=recipe.servings?.original||2;input.setAttribute('aria-label','Numero di porzioni desiderate');
@@ -80,6 +85,10 @@ function startGuide(recipe,servings,startIndex=0){
   const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','🔊 Leggi');
   [back,next,read].forEach(button=>{button.className='chefai-action';button.type='button'});
   let index=Math.min(Math.max(0,startIndex),steps.length-1),timerInterval=null;
+  const conversation=[];
+  const deviceKey='recipe-finder-device-id';
+  let deviceId='';
+  try{deviceId=localStorage.getItem(deviceKey)||'';if(!/^[A-Za-z0-9-]{16,100}$/.test(deviceId)){deviceId=(crypto.randomUUID?crypto.randomUUID():('chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)));localStorage.setItem(deviceKey,deviceId)}}catch(_){deviceId='chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)}
   function show(){
     if(timerInterval){clearInterval(timerInterval);timerInterval=null}
     const step=steps[index];area.replaceChildren(node('small','PASSAGGIO '+(index+1)+' DI '+steps.length),node('p',step.instruction));
@@ -102,7 +111,45 @@ function startGuide(recipe,servings,startIndex=0){
   back.onclick=()=>{index=Math.max(0,index-1);show()};
   next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
   read.onclick=()=>{if('speechSynthesis'in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(steps[index].instruction);utterance.lang='it-IT';speechSynthesis.speak(utterance)}else say('La lettura vocale non è supportata da questo browser.')};
-  nav.append(back,next,read);result.append(area,nav);show();
+  nav.append(back,next,read);
+  const voiceButton=node('button','🎙 Comandi vocali');voiceButton.className='chefai-action';voiceButton.type='button';
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SpeechRecognition){
+    voiceButton.onclick=()=>{
+      const recognition=new SpeechRecognition();recognition.lang='it-IT';recognition.interimResults=false;recognition.maxAlternatives=1;
+      voiceButton.disabled=true;voiceButton.textContent='Ascolto…';
+      recognition.onresult=event=>{
+        const command=event.results[0][0].transcript.toLowerCase();
+        if(/indietro|precedente/.test(command))back.click();
+        else if(/avanti|successivo|prossimo/.test(command))next.click();
+        else if(/ripeti|rileggi/.test(command))read.click();
+        else say('Comando non riconosciuto. Puoi dire avanti, indietro o ripeti.');
+      };
+      recognition.onerror=()=>say('Non sono riuscito a riconoscere il comando vocale.');
+      recognition.onend=()=>{voiceButton.disabled=false;voiceButton.textContent='🎙 Comandi vocali'};
+      recognition.start();
+    };
+    nav.append(voiceButton);
+  }
+  const askBox=node('section');askBox.className='chefai-step';
+  askBox.append(node('h3','Hai una domanda su questo passaggio?'));
+  const askInput=node('input');askInput.type='text';askInput.maxLength=700;askInput.placeholder='Es. Come capisco se è pronto?';askInput.setAttribute('aria-label','Domanda allo chef');
+  const askButton=node('button','Chiedi allo chef');askButton.className='chefai-action';askButton.type='button';
+  const answer=node('p');answer.setAttribute('aria-live','polite');
+  askButton.onclick=async()=>{
+    const question=askInput.value.trim();if(question.length<2){say('Scrivi una domanda prima di inviare.');return}
+    askButton.disabled=true;answer.textContent='Lo chef sta pensando…';
+    const context='Contesto Chef-AI: ricetta '+recipe.name+'. Porzioni '+servings+'. Passaggio '+(index+1)+'/'+steps.length+': '+steps[index].instruction+'. Ingredienti: '+(recipe.ingredients||[]).map(x=>x.name+' '+(x.quantity??'')+' '+(x.unit||'')).join(', ')+'. Rispondi in modo breve e riferito a questo contesto.';
+    const messages=[{role:'user',content:context},...conversation.slice(-5),{role:'user',content:question}];
+    try{
+      const response=await fetch('/api/chef/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:deviceId,messages})});
+      const data=await response.json();if(!response.ok)throw Error(data.detail||'Domanda non disponibile.');
+      answer.textContent=data.answer||'Non ho ricevuto una risposta.';conversation.push({role:'user',content:question},{role:'assistant',content:answer.textContent});askInput.value='';
+    }catch(error){answer.textContent=error.message||'Errore durante la domanda.'}
+    finally{askButton.disabled=false}
+  };
+  askBox.append(askInput,askButton,answer);
+  result.append(area,nav,askBox);show();
 }
 $('#search-btn').onclick=async()=>{
   const query=$('#search-q').value.trim();if(query.length<2){say('Scrivi almeno due caratteri.');return}
