@@ -505,7 +505,7 @@ async def chef_ai_standardize(request: Request):
         if len(source_text)<20 or len(source_text)>12000: raise HTTPException(status_code=400,detail="Inserisci una ricetta di almeno 20 caratteri e non oltre 12.000.")
     try:
         env=request.scope["env"]
-        result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_AI_SYSTEM_PROMPT},{"role":"user","content":"Standardizza questa ricetta e svolgi l'audit obbligatorio. Fonte:\n"+source_text}],"max_tokens":3000,"temperature":0.15,"chat_template_kwargs":{"enable_thinking":False}}))
+        result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_AI_SYSTEM_PROMPT},{"role":"user","content":"Genera o standardizza la ricetta richiesta e svolgi l'audit obbligatorio. Restituisci tutti i campi previsti, anche quando alcuni valori sono null o liste vuote. Fonte:\n"+source_text}],"max_completion_tokens":5000,"temperature":0.1,"response_format":{"type":"json_object"},"chat_template_kwargs":{"enable_thinking":False}}))
         recipe=_chef_ai_extract(result)
         required=("name","servings","times","ingredients","equipment","steps","validation","completeness_check")
         if not isinstance(recipe,dict) or any(key not in recipe for key in required):
@@ -515,6 +515,7 @@ async def chef_ai_standardize(request: Request):
         return {"recipe":recipe}
     except HTTPException: raise
     except Exception as exc:
+        print("Chef-AI standardizzazione fallita:", type(exc).__name__, str(exc)[:500])
         raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Riprova.") from exc
 
 
