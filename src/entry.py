@@ -455,27 +455,43 @@ def _chef_js(value):
 
 
 CHEF_AI_SYSTEM_PROMPT = """Sei il motore di standardizzazione e revisione culinaria di Chef-AI. Rispondi esclusivamente in italiano e restituisci SOLO JSON valido. Non inventare ingredienti, quantità, tempi, temperature o attrezzature: se un dato manca usa null o una lista vuota e segnala il problema. Conserva i dati della fonte distinguendoli dai suggerimenti. Controlla obbligatoriamente ingredienti mancanti o inutilizzati, quantità/unità, passaggi mancanti, sequenza, tempi, temperature e modalità di cottura, attrezzatura essenziale, ambiguità e contraddizioni. Non applicare correzioni sostanziali senza conferma. Usa questa struttura: {"name":"...","servings":{"original":null,"requested":null,"confirmed":false},"times":{"preparation_minutes":null,"cooking_minutes":null,"total_minutes":null},"ingredients":[{"name":"...","quantity":null,"unit":null,"scaling":"linear|manual_review|not_scaled"}],"equipment":[],"steps":[{"order":1,"instruction":"...","timer_seconds":null,"temperature_c":null,"cooking_mode":null}],"validation":{"status":"da_verificare","issues":[{"field":"...","severity":"info|warning|blocking","message":"..."}]},"completeness_check":{"status":"complete|needs_review|blocking","findings":[{"category":"ingredient_missing|step_missing|quantity_missing|timing_missing|temperature_missing|equipment_missing|sequence_issue|contradiction|unclear_instruction|other","severity":"info|warning|blocking","description":"...","evidence":null,"suggested_action":null,"resolved":false}]}}. Le dosi incerte restano null. Segnala i problemi bloccanti. Non indicare una ricetta come pronta se mancano dati indispensabili."""
-def _chef_ai_extract(value):
+def _chef_ai_field(value, key, default=None):
     if isinstance(value, dict):
-        answer=value.get("response")
-        if not answer:
-            choices=value.get("choices") or []
-            if choices:
-                message=choices[0].get("message",{}) if isinstance(choices[0],dict) else {}
-                answer=message.get("content") if isinstance(message,dict) else None
-    else:
-        answer=getattr(value,"response",None)
-    if isinstance(answer,list):
-        answer="".join(str(part.get("text","")) if isinstance(part,dict) else "" for part in answer)
-    if not isinstance(answer,str) or not answer.strip():
-        raise RuntimeError("Risposta AI vuota.")
+        return value.get(key, default)
+    getter=getattr(value, "get", None)
+    if callable(getter):
+        try:
+            found=getter(key)
+            if found is not None:
+                return found
+        except Exception:
+            pass
+    return getattr(value, key, default)
+
+
+def _chef_ai_extract(value):
+    answer=_chef_ai_field(value, "response")
+    if not answer:
+        choices=_chef_ai_field(value, "choices", []) or []
+        if choices:
+            first=choices[0]
+            message=_chef_ai_field(first, "message", {})
+            answer=_chef_ai_field(message, "content")
+    if isinstance(answer, list):
+        parts=[]
+        for part in answer:
+            piece=_chef_ai_field(part, "text", "")
+            if piece:
+                parts.append(str(piece))
+        answer="".join(parts)
+    if not isinstance(answer, str) or not answer.strip():
+        raise RuntimeError("Workers AI non ha restituito testo nel campo response o choices.")
     raw=answer.strip()
     if raw.startswith("```"):
         raw=raw.split("\n",1)[-1].rsplit("```",1)[0].strip()
-    if raw.startswith("{") and raw.endswith("}"):
-        return json.loads(raw)
     start,end=raw.find("{"),raw.rfind("}")
-    if start<0 or end<=start: raise RuntimeError("Risposta AI non strutturata.")
+    if start<0 or end<=start:
+        raise RuntimeError("La risposta AI non contiene un oggetto JSON.")
     return json.loads(raw[start:end+1])
 
 @app.post("/api/chef-ai/standardize")
@@ -505,17 +521,30 @@ async def chef_ai_standardize(request: Request):
         if len(source_text)<20 or len(source_text)>12000: raise HTTPException(status_code=400,detail="Inserisci una ricetta di almeno 20 caratteri e non oltre 12.000.")
     try:
         env=request.scope["env"]
-        result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_AI_SYSTEM_PROMPT},{"role":"user","content":"Genera o standardizza la ricetta richiesta e svolgi l'audit obbligatorio. Restituisci tutti i campi previsti, anche quando alcuni valori sono null o liste vuote. Fonte:\n"+source_text}],"max_completion_tokens":5000,"temperature":0.1,"response_format":{"type":"json_object"},"chat_template_kwargs":{"enable_thinking":False}}))
-        recipe=_chef_ai_extract(result)
+        user_message="Genera o standardizza la ricetta richiesta e svolgi l'audit obbligatorio. Restituisci tutti i campi previsti, anche quando alcuni valori sono null o liste vuote. Fonte:\n"+source_text
+        attempts=[
+            {"max_completion_tokens":5000,"response_format":{"type":"json_object"}},
+            {"max_tokens":6000},
+        ]
+        errors=[]
         required=("name","servings","times","ingredients","equipment","steps","validation","completeness_check")
-        if not isinstance(recipe,dict) or any(key not in recipe for key in required):
-            raise RuntimeError("Schema ricetta incompleto.")
-        if not isinstance(recipe["steps"],list) or not recipe["steps"]:
-            raise RuntimeError("Procedimento assente.")
-        return {"recipe":recipe}
+        for options in attempts:
+            try:
+                model_input={"messages":[{"role":"system","content":CHEF_AI_SYSTEM_PROMPT},{"role":"user","content":user_message}],"temperature":0.1,"chat_template_kwargs":{"enable_thinking":False}}
+                model_input.update(options)
+                result=await env.AI.run(CHEF_MODEL,_chef_js(model_input))
+                recipe=_chef_ai_extract(result)
+                if not isinstance(recipe,dict) or any(key not in recipe for key in required):
+                    raise RuntimeError("Schema ricetta incompleto.")
+                if not isinstance(recipe["steps"],list) or not recipe["steps"]:
+                    raise RuntimeError("Procedimento assente.")
+                return {"recipe":recipe}
+            except Exception as attempt_error:
+                errors.append(type(attempt_error).__name__+": "+str(attempt_error)[:300])
+        raise RuntimeError("Tentativi AI falliti: "+" | ".join(errors))
     except HTTPException: raise
     except Exception as exc:
-        print("Chef-AI standardizzazione fallita:", type(exc).__name__, str(exc)[:500])
+        print("Chef-AI standardizzazione fallita:", type(exc).__name__, str(exc)[:1000])
         raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Riprova.") from exc
 
 
