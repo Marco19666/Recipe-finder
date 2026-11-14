@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recipe-finder.chiccovision.workers.dev/schemas/chef-ai-recipe-v1.json",
+  "title": "Chef-AI standardized recipe",
+  "description": "Canonical recipe structure shared by every Chef-AI input method.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "servings",
+    "times",
+    "ingredients",
+    "equipment",
+    "steps",
+    "validation"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "servings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["original", "requested"],
+      "properties": {
+        "original": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "requested": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0,
+          "description": "Set only after the user confirms how many portions are needed."
+        },
+        "confirmed": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "times": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparation_minutes", "cooking_minutes", "total_minutes"],
+      "properties": {
+        "preparation_minutes": {"type": ["number", "null"], "minimum": 0},
+        "cooking_minutes": {"type": ["number", "null"], "minimum": 0},
+        "total_minutes": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "ingredients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "quantity", "unit", "scaling"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "quantity": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Null when the source does not specify a reliable quantity."
+          },
+          "unit": {
+            "type": ["string", "null"],
+            "maxLength": 40,
+            "description": "Normalized unit, e.g. g, kg, ml, l, piece, teaspoon."
+          },
+          "scaling": {
+            "type": "string",
+            "enum": ["linear", "manual_review", "not_scaled"],
+            "description": "AI must not blindly scale ingredients marked manual_review or not_scaled."
+          }
+        }
+      }
+    },
+    "equipment": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 100},
+      "uniqueItems": true
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "instruction", "timer_seconds", "temperature_c", "cooking_mode"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "instruction": {"type": "string", "minLength": 1, "maxLength": 1200},
+          "timer_seconds": {"type": ["integer", "null"], "minimum": 1},
+          "temperature_c": {"type": ["number", "null], "minimum": -30, "maximum": 350},
+          "cooking_mode": {
+            "type": ["string", "null"],
+            "enum": ["static", "fan", "grill", "hob", "boiling", "frying", "steaming", "other", null]
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "issues"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["da_elaborare", "in_elaborazione", "da_verificare", "pronta", "errore"]
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "severity", "message"],
+            "properties": {
+              "field": {"type": "string", "minLength": 1},
+              "severity": {"type": "string", "enum": ["info", "warning", "blocking"]},
+              "message": {"type": "string", "minLength": 1, "maxLength": 300}
+            }
+          }
+        }
+      }
+    }
+  }
+}
