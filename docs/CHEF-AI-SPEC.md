@@ -1,0 +1,72 @@
+# Chef-AI — specifica funzionale v1.1
+
+## Obiettivo
+
+Chef-AI è una pagina indipendente collegata dalla home di Recipe Finder. Ogni modalità di ingresso produce la stessa ricetta strutturata e alimenta un solo motore di guida passo passo.
+
+## Modalità di ingresso
+
+Prima versione:
+1. Ricerca con il motore di Recipe Finder e selezione di una ricetta.
+2. Caricamento di un file di ricetta.
+3. Inserimento manuale in campi dedicati.
+4. Richiesta di una ricetta generata dall'AI.
+
+Seconda fase:
+5. Caricamento di una fotografia e riconoscimento OCR.
+
+## Pipeline unica
+
+1. Acquisizione della ricetta.
+2. Standardizzazione AI in background nello schema `chef-ai-recipe.schema.json`.
+3. Validazione strutturale e controllo dei dati mancanti o ambigui.
+4. Presentazione della ricetta all'utente per la verifica.
+5. Scelta del numero di porzioni desiderato.
+6. Ricalcolo delle quantità che possono essere scalate in modo lineare.
+7. Richiesta di conferma manuale per ingredienti o quantità che non possono essere scalati in sicurezza.
+8. Avvio della guida passo passo.
+
+## Campi della ricetta standard
+
+- Nome della ricetta.
+- Porzioni originali e porzioni richieste dall'utente.
+- Tempi di preparazione, cottura e totale.
+- Ingredienti strutturati con nome, quantità, unità e regola di scalatura.
+- Attrezzatura.
+- Passaggi ordinati con istruzione, timer, temperatura e modalità di cottura.
+- Stato di validazione e problemi rilevati.
+
+Non vengono aggiunti campi generici di identificazione o note. Il nome resta il titolo operativo necessario a riconoscere la ricetta.
+
+## Regole di integrità
+
+- Non inventare quantità, ingredienti, tempi, temperature o attrezzature mancanti.
+- I dati non disponibili restano null e generano un avviso di validazione.
+- Distinguere i dati espliciti della fonte dalle eventuali proposte dell'AI.
+- Non dichiarare pronta una ricetta con problemi bloccanti.
+- Le istruzioni di sicurezza alimentare non vanno dedotte da dati incompleti.
+- Conservare il risultato standardizzato e riutilizzarlo: non richiamare l'AI se la ricetta non è cambiata.
+- Le porzioni richieste sono una scelta dell'utente e non vanno presunte dall'AI.
+- Non scalare automaticamente ingredienti marcati `manual_review` o `not_scaled`.
+- I tempi e le temperature non si moltiplicano automaticamente in proporzione alle porzioni.
+
+## Stati di lavorazione
+
+- `da_elaborare`
+- `in_elaborazione`
+- `da_verificare`
+- `pronta`
+- `errore`
+
+## Contenimento dei token
+
+- Una sola elaborazione iniziale per standardizzare la ricetta.
+- Riutilizzo della ricetta standardizzata memorizzata.
+- Guida ordinaria, timer e navigazione gestiti senza chiamate AI.
+- Domande all'assistente AI solo su richiesta dell'utente.
+- Per la chat, inviare ricetta e stato corrente con memoria sintetica, non l'intera cronologia.
+- Cronologia completa consultabile separatamente dalla memoria inviata al modello.
+
+## Fuori dalla prima versione
+
+Il caricamento fotografico con OCR è previsto per una seconda fase e non deve condizionare lo schema comune.
