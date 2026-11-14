@@ -19,12 +19,13 @@ Seconda fase:
 
 1. Acquisizione della ricetta.
 2. Standardizzazione AI in background nello schema `chef-ai-recipe.schema.json`.
-3. Validazione strutturale e controllo dei dati mancanti o ambigui.
-4. Presentazione della ricetta all'utente per la verifica.
-5. Scelta del numero di porzioni desiderato.
-6. Ricalcolo delle quantità che possono essere scalate in modo lineare.
-7. Richiesta di conferma manuale per ingredienti o quantità che non possono essere scalati in sicurezza.
-8. Avvio della guida passo passo.
+3. Validazione strutturale e audit AI obbligatorio di completezza e coerenza.
+4. Presentazione dei rilievi: l'AI segnala lacune, contraddizioni e possibili correzioni senza modificarle di nascosto.
+5. L'utente conferma, corregge o accetta le proposte; i problemi bloccanti devono essere risolti prima di iniziare.
+6. Scelta del numero di porzioni desiderato.
+7. Ricalcolo delle quantità che possono essere scalate in modo lineare.
+8. Richiesta di conferma manuale per ingredienti o quantità che non possono essere scalati in sicurezza.
+9. Avvio della guida passo passo.
 
 ## Campi della ricetta standard
 
@@ -35,8 +36,22 @@ Seconda fase:
 - Attrezzatura.
 - Passaggi ordinati con istruzione, timer, temperatura e modalità di cottura.
 - Stato di validazione e problemi rilevati.
+- Rapporto di completezza AI con categoria, gravità, descrizione, evidenza nella ricetta, azione suggerita e stato di risoluzione.
 
 Non vengono aggiunti campi generici di identificazione o note. Il nome resta il titolo operativo necessario a riconoscere la ricetta.
+
+## Audit AI obbligatorio di completezza
+
+L'AI deve confrontare l'elenco ingredienti con tutti i passaggi e verificare almeno:
+- Ingredienti citati nel procedimento ma assenti dall'elenco.
+- Ingredienti elencati ma mai utilizzati, segnalando che potrebbero essere guarnizioni o elementi facoltativi anziché dichiararli automaticamente errori.
+- Quantità o unità mancanti, vaghe o incoerenti.
+- Passaggi mancanti o salti logici (ad esempio un ingrediente che risulta già cotto senza una fase di cottura descritta).
+- Tempi, temperature e modalità di cottura mancanti quando necessari, oppure contraddittori.
+- Attrezzatura essenziale non indicata.
+- Sequenza non eseguibile, istruzioni ambigue e contraddizioni tra ingredienti, dosi e procedimento.
+
+Ogni rilievo deve indicare categoria, gravità, descrizione, evidenza testuale e correzione suggerita. L'AI non deve inventare dati né applicare automaticamente correzioni sostanziali. Deve distinguere errori certi da possibili omissioni e semplici suggerimenti. I problemi bloccanti richiedono una decisione dell'utente prima di avviare la guida; gli avvisi non bloccanti possono essere confermati o ignorati consapevolmente.
 
 ## Regole di integrità
 
