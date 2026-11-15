@@ -282,7 +282,7 @@ async function loadDailyRecipe() {
     tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
     const choices = tryCategories.map((category, index) => ({
       ...category,
-      query: category.queries[Math.floor(dayNumber / 5 + index * 7) % category.queries.length]
+      query: category.queries[dayNumber + index * 7 % category.queries.length]
     }));
     const found = await Promise.all(choices.map((category, index) =>
       fetchSuggestion(category.query, dayNumber, index + 1, dailySites)
