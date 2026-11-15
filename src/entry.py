@@ -547,7 +547,7 @@ async def chef_ai_standardize(request: Request):
     except HTTPException: raise
     except Exception as exc:
         print("Chef-AI standardizzazione fallita:", type(exc).__name__, str(exc)[:1000])
-        raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Riprova.") from exc
+        raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Dettaglio tecnico: "+str(exc)[:700]) from exc
 
 
 @app.get("/api/chef/status")
