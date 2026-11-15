@@ -22,14 +22,14 @@ async function standardize(payload){
     if(!response.ok)throw Error(data.detail||'Elaborazione non riuscita.');
     if(!data.recipe)throw Error('La risposta non contiene una ricetta valida.');
     try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({recipe:data.recipe,normalized:true,savedAt:Date.now()}))}catch(_){}
-    render(data.recipe);
+    render(data.recipe,Number(payload.requested_servings)||null);
   }catch(error){say(error.message||'Errore durante l’elaborazione.')}
   finally{document.querySelectorAll('.chefai-action').forEach(button=>button.disabled=false)}
 }
-function render(recipe){
+function render(recipe,presetServings=null){
   status.hidden=true;result.replaceChildren();
   result.append(node('h2',recipe.name||'Ricetta'));
-  result.append(node('p','Porzioni originali: '+(recipe.servings?.original??'non indicate')+' · Preparazione: '+(recipe.times?.preparation_minutes??'—')+' min · Cottura: '+(recipe.times?.cooking_minutes??'—')+' min'));
+  result.append(node('p',(presetServings?'Porzioni richieste: '+presetServings:'Porzioni originali: '+(recipe.servings?.original??'non indicate'))+' · Preparazione: '+(recipe.times?.preparation_minutes??'—')+' min · Cottura: '+(recipe.times?.cooking_minutes??'—')+' min'));
   const audit=recipe.completeness_check||{};
   const findings=Array.isArray(audit.findings)?audit.findings:[];
   if(findings.length){
@@ -55,14 +55,14 @@ function render(recipe){
   });
   const blocked=audit.status==='blocking'||recipe.validation?.status==='errore'||findings.some(f=>f.severity==='blocking'&&!f.resolved)||validationIssues.some(issue=>issue.severity==='blocking');
   if(blocked){result.append(node('p','La ricetta presenta problemi bloccanti: occorre chiarirli o correggerli prima di avviare la guida.'));return}
-  const panel=node('div');panel.append(node('h3','Quante porzioni vuoi preparare?'));
-  const input=node('input');input.type='number';input.min='1';input.max='50';input.step='1';input.inputMode='numeric';input.value=recipe.servings?.original||2;input.setAttribute('aria-label','Numero di porzioni desiderate');
+  const panel=node('div');panel.append(node('h3',presetServings?'Hai indicato '+presetServings+' porzioni nella richiesta':'Quante porzioni vuoi preparare?'));
+  const input=node('input');input.type='number';input.min='1';input.max='50';input.step='1';input.inputMode='numeric';input.value=presetServings||recipe.servings?.original||2;input.setAttribute('aria-label','Numero di porzioni desiderate');
   panel.append(input);
-  const go=node('button','Conferma porzioni e avvia Chef Guidato');go.className='chefai-action';
+  const go=node('button',presetServings?'Conferma '+presetServings+' porzioni e avvia Chef Guidato':'Conferma porzioni e avvia Chef Guidato');go.className='chefai-action';
   go.onclick=()=>{
     const servings=Number(input.value);
     if(!Number.isInteger(servings)||servings<1||servings>50){say('Inserisci un numero di porzioni valido, da 1 a 50.');return}
-    const original=Number(recipe.servings?.original);
+    const original=Number(recipe.servings?.original)||Number(presetServings);
     const hasOriginal=Number.isFinite(original)&&original>0;
     const scaled=structuredClone(recipe);
     if(hasOriginal){
@@ -174,7 +174,16 @@ $('#recipe-file').onchange=async event=>{
   if(file.size>1000000){say('Il file supera 1 MB.');event.target.value='';return}
   $('#file-text').value=await file.text();say('File caricato. Ora puoi controllare la ricetta.');
 };
-$('#ai-btn').onclick=()=>standardize({request:$('#ai-prompt').value});
+function servingsFromRequest(value){
+  const text=String(value||'');
+  const match=text.match(/(?:per|da|di)\s*(\d{1,2})\s*(?:persone|porzioni)\b|(\d{1,2})\s*(?:persone|porzioni)\b/i);
+  const count=Number(match?.[1]||match?.[2]);
+  return Number.isInteger(count)&&count>=1&&count<=50?count:null;
+}
+$('#ai-btn').onclick=()=>{
+  const request=$('#ai-prompt').value;
+  standardize({request,requested_servings:servingsFromRequest(request)});
+};
 
 function offerResume(){
   try{
