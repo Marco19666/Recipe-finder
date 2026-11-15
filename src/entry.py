@@ -456,7 +456,7 @@ def _chef_js(value):
     return to_js(value, dict_converter=Object.fromEntries)
 
 
-CHEF_AI_SYSTEM_PROMPT = """Sei il motore di standardizzazione e revisione culinaria di Chef-AI. Rispondi esclusivamente in italiano e restituisci SOLO JSON valido. Non inventare ingredienti, quantità, tempi, temperature o attrezzature: se un dato manca usa null o una lista vuota e segnala il problema. Conserva i dati della fonte distinguendoli dai suggerimenti. Controlla obbligatoriamente ingredienti mancanti o inutilizzati, quantità/unità, passaggi mancanti, sequenza, tempi, temperature e modalità di cottura, attrezzatura essenziale, ambiguità e contraddizioni. Non applicare correzioni sostanziali senza conferma. Usa questa struttura: {"name":"...","servings":{"original":null,"requested":null,"confirmed":false},"times":{"preparation_minutes":null,"cooking_minutes":null,"total_minutes":null},"ingredients":[{"name":"...","quantity":null,"unit":null,"scaling":"linear|manual_review|not_scaled"}],"equipment":[],"steps":[{"order":1,"instruction":"...","timer_seconds":null,"temperature_c":null,"cooking_mode":null}],"validation":{"status":"da_verificare","issues":[{"field":"...","severity":"info|warning|blocking","message":"..."}]},"completeness_check":{"status":"complete|needs_review|blocking","findings":[{"category":"ingredient_missing|step_missing|quantity_missing|timing_missing|temperature_missing|equipment_missing|sequence_issue|contradiction|unclear_instruction|other","severity":"info|warning|blocking","description":"...","evidence":null,"suggested_action":null,"resolved":false}]}}. Le dosi incerte restano null. Segnala i problemi bloccanti. Non indicare una ricetta come pronta se mancano dati indispensabili."""
+CHEF_AI_SYSTEM_PROMPT = """Sei il motore di creazione, standardizzazione e revisione culinaria di Chef-AI. Rispondi esclusivamente in italiano e restituisci SOLO JSON valido. Se l’utente chiede di GENERARE o CREARE una ricetta da un nome o da una descrizione del piatto, crea una ricetta completa e realizzabile da zero, con ingredienti, dosi plausibili e almeno 4 passaggi operativi ordinati. In questo caso puoi formulare dosi, tempi e procedimento ragionevoli, senza presentarli come dati provenienti da una fonte. Se invece l’utente fornisce una ricetta da standardizzare, non inventare ingredienti, quantità, tempi, temperature o attrezzature: se un dato manca usa null o una lista vuota e segnala il problema. In entrambi i casi il campo steps deve contenere il procedimento disponibile; non restituire mai steps vuoto quando stai generando una ricetta. Conserva i dati della fonte distinguendoli dai suggerimenti. Controlla obbligatoriamente ingredienti mancanti o inutilizzati, quantità/unità, passaggi mancanti, sequenza, tempi, temperature e modalità di cottura, attrezzatura essenziale, ambiguità e contraddizioni. Non applicare correzioni sostanziali senza conferma. Usa questa struttura: {"name":"...","servings":{"original":null,"requested":null,"confirmed":false},"times":{"preparation_minutes":null,"cooking_minutes":null,"total_minutes":null},"ingredients":[{"name":"...","quantity":null,"unit":null,"scaling":"linear|manual_review|not_scaled"}],"equipment":[],"steps":[{"order":1,"instruction":"...","timer_seconds":null,"temperature_c":null,"cooking_mode":null}],"validation":{"status":"da_verificare","issues":[{"field":"...","severity":"info|warning|blocking","message":"..."}]},"completeness_check":{"status":"complete|needs_review|blocking","findings":[{"category":"ingredient_missing|step_missing|quantity_missing|timing_missing|temperature_missing|equipment_missing|sequence_issue|contradiction|unclear_instruction|other","severity":"info|warning|blocking","description":"...","evidence":null,"suggested_action":null,"resolved":false}]}}. Le dosi incerte restano null. Segnala i problemi bloccanti. Non indicare una ricetta come pronta se mancano dati indispensabili."""
 def _chef_ai_field(value, key, default=None):
     if isinstance(value, dict):
         return value.get(key, default)
@@ -502,6 +502,7 @@ async def chef_ai_standardize(request: Request):
     except Exception: raise HTTPException(status_code=400,detail="Richiesta non valida.")
     if not isinstance(payload,dict): raise HTTPException(status_code=400,detail="Richiesta non valida.")
     source_text=""
+    generation_request=False
     source_url=str(payload.get("source_url") or "").strip()
     if source_url:
         host=allowed_host(source_url)
@@ -515,6 +516,7 @@ async def chef_ai_standardize(request: Request):
         except Exception as exc:
             raise HTTPException(status_code=422,detail="Non riesco a leggere i dati strutturati di questa ricetta. Prova a incollare il testo.") from exc
     elif payload.get("request"):
+        generation_request=True
         prompt=str(payload.get("request") or "").strip()
         if len(prompt)<5 or len(prompt)>1200: raise HTTPException(status_code=400,detail="Descrivi cosa vuoi cucinare (5–1200 caratteri).")
         source_text="Genera una ricetta adatta alla richiesta seguente, poi sottoponila allo stesso controllo rigoroso di completezza: "+prompt
@@ -523,7 +525,14 @@ async def chef_ai_standardize(request: Request):
         if len(source_text)<20 or len(source_text)>12000: raise HTTPException(status_code=400,detail="Inserisci una ricetta di almeno 20 caratteri e non oltre 12.000.")
     try:
         env=request.scope["env"]
-        user_message="Genera o standardizza la ricetta richiesta e svolgi l'audit obbligatorio. Restituisci tutti i campi previsti, anche quando alcuni valori sono null o liste vuote. Fonte:\n"+source_text
+        if generation_request:
+            user_message=("CREAZIONE DA ZERO — non stai analizzando una fonte incompleta. Crea la ricetta richiesta in modo completo e autonomo. "
+                          "Inserisci ingredienti con dosi plausibili e almeno 4 elementi in steps, ciascuno con ordine e istruzione concreta. "
+                          "Non lasciare steps vuoto e non sostituire il procedimento con una descrizione generica. "
+                          "Compila tutti gli otto campi dello schema; tempi, attrezzatura e passaggi devono essere coerenti. "
+                          "Poi esegui l'audit sulla ricetta che hai appena creato. Richiesta: "+source_text)
+        else:
+            user_message="STANDARDIZZAZIONE DI UNA RICETTA FORNITA — conserva fedelmente i dati presenti, non inventare quelli mancanti. Esegui l'audit obbligatorio. Restituisci tutti i campi previsti, anche quando alcuni valori sono null o liste vuote. Fonte:\n"+source_text
         attempts=[
             {"max_completion_tokens":5000,"response_format":{"type":"json_object"}},
             {"max_tokens":6000},
@@ -536,10 +545,35 @@ async def chef_ai_standardize(request: Request):
                 model_input.update(options)
                 result=await env.AI.run(CHEF_MODEL,_chef_js(model_input))
                 recipe=_chef_ai_extract(result)
-                if not isinstance(recipe,dict) or any(key not in recipe for key in required):
+                if not isinstance(recipe,dict):
+                    raise RuntimeError("La risposta AI non è un oggetto ricetta.")
+                # Normalizza le varianti del modello per il campo procedimento.
+                if not recipe.get("steps"):
+                    for alias in ("instructions","procedure","directions","method","preparation"):
+                        candidate=recipe.get(alias)
+                        if isinstance(candidate,list) and candidate:
+                            recipe["steps"]=candidate
+                            break
+                if isinstance(recipe.get("steps"),list):
+                    normalized_steps=[]
+                    for index, step in enumerate(recipe["steps"],1):
+                        if isinstance(step,str) and step.strip():
+                            normalized_steps.append({"order":index,"instruction":step.strip(),"timer_seconds":None,"temperature_c":None,"cooking_mode":None})
+                        elif isinstance(step,dict):
+                            instruction=step.get("instruction") or step.get("text") or step.get("description") or step.get("name")
+                            if instruction:
+                                normalized_steps.append({
+                                    "order":step.get("order") or step.get("step") or index,
+                                    "instruction":str(instruction).strip(),
+                                    "timer_seconds":step.get("timer_seconds",step.get("timer",None)),
+                                    "temperature_c":step.get("temperature_c",step.get("temperature",None)),
+                                    "cooking_mode":step.get("cooking_mode",step.get("mode",None)),
+                                })
+                    recipe["steps"]=normalized_steps
+                if any(key not in recipe for key in required):
                     raise RuntimeError("Schema ricetta incompleto.")
-                if not isinstance(recipe["steps"],list) or not recipe["steps"]:
-                    raise RuntimeError("Procedimento assente.")
+                if not recipe["steps"]:
+                    raise RuntimeError("Procedimento assente: il modello non ha prodotto passaggi operativi.")
                 return {"recipe":recipe}
             except Exception as attempt_error:
                 errors.append(type(attempt_error).__name__+": "+str(attempt_error)[:300])
