@@ -63,13 +63,17 @@ function render(recipe){
     const servings=Number(input.value);
     if(!Number.isInteger(servings)||servings<1||servings>50){say('Inserisci un numero di porzioni valido, da 1 a 50.');return}
     const original=Number(recipe.servings?.original);
-    if(!Number.isFinite(original)||original<=0){say('Le porzioni originali non sono chiare: correggi il dato prima di scalare gli ingredienti.');return}
+    const hasOriginal=Number.isFinite(original)&&original>0;
     const scaled=structuredClone(recipe);
-    const factor=servings/original;
-    scaled.ingredients=(scaled.ingredients||[]).map(item=>{
-      if(item.scaling==='linear'&&typeof item.quantity==='number')return {...item,quantity:Math.round(item.quantity*factor*1000)/1000};
-      return {...item};
-    });
+    if(hasOriginal){
+      const factor=servings/original;
+      scaled.ingredients=(scaled.ingredients||[]).map(item=>{
+        if(item.scaling==='linear'&&typeof item.quantity==='number')return {...item,quantity:Math.round(item.quantity*factor*1000)/1000};
+        return {...item};
+      });
+    }else{
+      say('Porzioni originali non indicate: avvio la guida mantenendo invariate le quantità degli ingredienti.');
+    }
     scaled.servings={...scaled.servings,requested:servings,confirmed:true};
     saveSession(scaled,servings,0);
     startGuide(scaled,servings,0);
