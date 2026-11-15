@@ -86,9 +86,11 @@
       if(!type.includes("application/json")) throw new Error("Il servizio SalvaSoldi non è ancora configurato sul server. È necessaria l'attivazione dell'endpoint AI /api/salvasoldi.");
       const data=await response.json();
       if(!response.ok) throw new Error(data.detail||data.error||"Non è stato possibile completare il calcolo.");
-      renderResult(data,mode,targetResults); targetStatus.hidden=true;\n      updateQuota(mode==="budget"?"budget":"cost",Number(data.remaining??0));
+      renderResult(data,mode,targetResults); targetStatus.hidden=true;
+      updateQuota(mode==="budget"?"budget":"cost",Number(data.remaining??0));
     } catch(error) {
-      setStatus(error.message||"Errore durante la richiesta. Riprova più tardi.",true,targetStatus);\n      if(error && /esaurito le 2 ricerche/i.test(error.message))updateQuota(mode==="budget"?"budget":"cost",0);
+      setStatus(error.message||"Errore durante la richiesta. Riprova più tardi.",true,targetStatus);
+      if(error && /esaurito le 2 ricerche/i.test(error.message))updateQuota(mode==="budget"?"budget":"cost",0);
     } finally {
       button.disabled=false;
       button.textContent=mode==="budget"?"Crea il mio menu ↗":"Calcola la spesa ↗";
