@@ -421,23 +421,25 @@ class ChefDailyLimiter(DurableObject):
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS daily_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL)")
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_daily_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL)")
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_section_usage (section TEXT PRIMARY KEY, count INTEGER NOT NULL)")
+        self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_section_daily_usage (day TEXT NOT NULL, section TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(day, section))")
     def fetch(self, request):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(request.url); params = parse_qs(parsed.query)
         day = (params.get("day") or [""])[0]
         if parsed.path.startswith("/salvasoldi-"):
             section = (params.get("section") or [""])[0]
-            if section not in ("create_menu", "calculate_cost"):
-                return WorkerResponse.json({"error":"invalid section"}, status=400)
-            row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM salvasoldi_section_usage WHERE section = ?), 0) AS count", section).one()
+            if section not in ("create_menu", "calculate_cost") or not day:
+                return WorkerResponse.json({"error":"invalid section or day"}, status=400)
+            row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM salvasoldi_section_daily_usage WHERE day = ? AND section = ?), 0) AS count", day, section).one()
             count = int(row.count)
             if parsed.path == "/salvasoldi-refund":
-                if count > 0: self.ctx.storage.sql.exec("UPDATE salvasoldi_section_usage SET count=count-1 WHERE section=?", section)
+                if count > 0:
+                    self.ctx.storage.sql.exec("UPDATE salvasoldi_section_daily_usage SET count=count-1 WHERE day=? AND section=?", day, section)
                 return WorkerResponse.json({"remaining":max(0,2-count+1)})
             if parsed.path == "/salvasoldi-status":
                 return WorkerResponse.json({"remaining":max(0,2-count),"limit":2})
             if count >= 2: return WorkerResponse.json({"remaining":0}, status=429)
-            self.ctx.storage.sql.exec("INSERT INTO salvasoldi_section_usage(section,count) VALUES(?,1) ON CONFLICT(section) DO UPDATE SET count=count+1", section)
+            self.ctx.storage.sql.exec("INSERT INTO salvasoldi_section_daily_usage(day,section,count) VALUES(?,?,1) ON CONFLICT(day,section) DO UPDATE SET count=count+1", day, section)
             return WorkerResponse.json({"remaining":1-count})
         if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
@@ -627,8 +629,11 @@ async def salvasoldi_status(request: Request, device_id: str = Query(min_length=
         raise HTTPException(status_code=400, detail="Identificativo dispositivo non valido.")
     if mode not in {"create_menu", "calculate_cost"}:
         raise HTTPException(status_code=400, detail="Sezione non valida.")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    day = datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
     stub = request.scope["env"].CHEF_LIMITER.get(request.scope["env"].CHEF_LIMITER.idFromName(device_id))
-    response = await stub.fetch("https://chef-limiter/salvasoldi-status?section=" + mode)
+    response = await stub.fetch("https://chef-limiter/salvasoldi-status?section=" + mode + "&day=" + day)
     data = await response.json()
     return {"remaining": int(data.get("remaining", 0)), "limit": 2}
 
@@ -716,7 +721,7 @@ async def salvasoldi(request: Request):
     from zoneinfo import ZoneInfo
     day = datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
     stub = env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
-    quota_response = await stub.fetch("https://chef-limiter/salvasoldi-consume?section=" + mode)
+    quota_response = await stub.fetch("https://chef-limiter/salvasoldi-consume?section=" + mode + "&day=" + day)
     quota = await quota_response.json()
     if quota_response.status == 429:
         raise HTTPException(status_code=429, detail=("Hai esaurito le 2 ricerche disponibili in SalvaSoldi." if mode == "create_menu" else "Hai esaurito le 2 ricerche disponibili in QuantoSpendo."))
@@ -849,10 +854,10 @@ async def salvasoldi(request: Request):
             "limit": 2,
         }
     except HTTPException:
-        await stub.fetch("https://chef-limiter/salvasoldi-refund?section=" + mode)
+        await stub.fetch("https://chef-limiter/salvasoldi-refund?section=" + mode + "&day=" + day)
         raise
     except Exception as exc:
-        await stub.fetch("https://chef-limiter/salvasoldi-refund?day=" + day)
+        await stub.fetch("https://chef-limiter/salvasoldi-refund?section=" + mode + "&day=" + day)
         raise HTTPException(status_code=503, detail="SalvaSoldi è momentaneamente occupato. Riprova tra poco.") from exc
 
 
