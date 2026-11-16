@@ -290,31 +290,88 @@ function startGuide(recipe,servings,startIndex=0){
   const navigationControls=node('div');navigationControls.className='chefai-player-navigation';navigationControls.append(back,next);
   const audioControls=node('div');audioControls.className='chefai-player-audio';audioControls.append(read,readAll,stopRead);
   nav.append(navigationControls,audioControls);
-  const voiceButton=node('button','🎙 Comandi vocali');voiceButton.className='chefai-player-button chefai-player-voice';voiceButton.type='button';
+  const voiceButton=node('button','🎙 Attiva Wake-up');
+  voiceButton.className='chefai-player-button chefai-player-voice';voiceButton.type='button';
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SpeechRecognition){
-    voiceButton.onclick=()=>{
-      const recognition=new SpeechRecognition();recognition.lang='it-IT';recognition.interimResults=false;recognition.maxAlternatives=1;
-      voiceButton.disabled=true;voiceButton.textContent='Ascolto…';
-      recognition.onresult=event=>{
-        const command=event.results[0][0].transcript.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
-        if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();say('Lettura interrotta.')}
-        else if(/\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();say('Allarme del timer interrotto.')}
-        else if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
-        else if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command))next.click();
-        else if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
-        else if(/\b(stop|pausa|ferma|metti in pausa)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(stop|pausa|ferma)\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
-        else if(/\b(riprendi|continua|riavvia)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(riprendi|continua)\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
-        else if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\b(timer)\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
-        else if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l'intera ricetta)\b/.test(command))readAll.click();
-        else if(/\b(ripeti|rileggi)\b/.test(command))read.click();
-        else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta.');
-      };
-      recognition.onerror=()=>say('Non sono riuscito a riconoscere il comando vocale.');
-      recognition.onend=()=>{voiceButton.disabled=false;voiceButton.textContent='🎙 Comandi vocali'};
-      recognition.start();
+    let wakeRecognition=null,wakeActive=false,wakeCommandUntil=0,wakeRestartTimer=null;
+    const normalizeVoiceCommand=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\\s+/g,' ').trim();
+    const executeVoiceCommand=command=>{
+      if(/\\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\\b/.test(command)){stopTTS();say('Lettura interrotta.')}
+      else if(/\\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();say('Allarme del timer interrotto.')}
+      else if(/\\b(indietro|precedente|passaggio precedente)\\b/.test(command))back.click();
+      else if(/\\b(avanti|successivo|prossimo|passaggio successivo)\\b/.test(command))next.click();
+      else if(/\\b(spegni|azzera|resetta|annulla)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(spegni|azzera|resetta|annulla)\\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
+      else if(/\\b(stop|pausa|ferma|metti in pausa)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(stop|pausa|ferma)\\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
+      else if(/\\b(riprendi|continua|riavvia)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(riprendi|continua)\\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
+      else if(/\\b(avvia|inizia|attiva|fai partire|parti con)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(avvia|inizia|attiva)\\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
+      else if(/\\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l intera ricetta)\\b/.test(command))readAll.click();
+      else if(/\\b(ripeti|rileggi)\\b/.test(command))read.click();
+      else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta.');
     };
-    nav.append(voiceButton,node('p','Comandi: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta, ripeti, interrompi lettura.'));
+    const stopWakeListening=()=>{
+      wakeActive=false;wakeCommandUntil=0;
+      if(wakeRestartTimer)clearTimeout(wakeRestartTimer);
+      wakeRestartTimer=null;
+      if(wakeRecognition){try{wakeRecognition.stop()}catch(_){}wakeRecognition=null}
+      voiceButton.textContent='🎙 Attiva Wake-up';voiceButton.setAttribute('aria-pressed','false');
+    };
+    const startWakeListening=()=>{
+      if(!wakeActive||document.visibilityState!=='visible')return;
+      try{
+        wakeRecognition=new SpeechRecognition();
+        wakeRecognition.lang='it-IT';wakeRecognition.continuous=true;wakeRecognition.interimResults=false;wakeRecognition.maxAlternatives=1;
+        wakeRecognition.onresult=event=>{
+          for(let i=event.resultIndex;i<event.results.length;i++){
+            if(!event.results[i].isFinal)continue;
+            let command=normalizeVoiceCommand(event.results[i][0].transcript);
+            const wakeMatch=command.match(/\\b(?:ehi\\s+chef|hey\\s+chef|chef)\\b/);
+            if(wakeMatch){
+              command=command.slice(wakeMatch.index+wakeMatch[0].length).trim();
+              wakeCommandUntil=Date.now()+10000;
+              if(!command){say('Wake-up attivo: dimmi pure cosa devo fare.');continue}
+            }else if(Date.now()>wakeCommandUntil)continue;
+            wakeCommandUntil=0;
+            executeVoiceCommand(command);
+          }
+        };
+        wakeRecognition.onerror=event=>{
+          if(event.error==='not-allowed'||event.error==='service-not-allowed'){
+            say('Permesso microfono negato. Abilita il microfono nelle impostazioni del browser.');
+            stopWakeListening();
+          }
+        };
+        wakeRecognition.onend=()=>{
+          wakeRecognition=null;
+          if(wakeActive&&document.visibilityState==='visible'){
+            voiceButton.textContent='🟢 Wake-up attivo · «Ehi Chef»';
+            wakeRestartTimer=setTimeout(startWakeListening,700);
+          }
+        };
+        wakeRecognition.start();
+        voiceButton.textContent='🟢 Wake-up attivo · «Ehi Chef»';
+        voiceButton.setAttribute('aria-pressed','true');
+        say('Wake-up attivo. Puoi dire «Ehi Chef» seguito da un comando.');
+      }catch(error){
+        say('Impossibile avviare il riconoscimento vocale. Verifica il permesso microfono.');
+        if(wakeActive){wakeActive=false;voiceButton.textContent='🎙 Attiva Wake-up';voiceButton.setAttribute('aria-pressed','false')}
+      }
+    };
+    voiceButton.onclick=()=>{
+      if(wakeActive){stopWakeListening();say('Wake-up disattivato.');return}
+      wakeActive=true;startWakeListening();
+    };
+    document.addEventListener('visibilitychange',()=>{
+      if(!wakeActive)return;
+      if(document.visibilityState==='hidden'){
+        if(wakeRecognition){try{wakeRecognition.stop()}catch(_){}wakeRecognition=null}
+        if(wakeRestartTimer)clearTimeout(wakeRestartTimer);
+      }else if(!wakeRecognition)startWakeListening();
+    });
+    nav.append(voiceButton,node('p','Modalità Wake-up: attiva il microfono una volta, poi dì «Ehi Chef» e il comando. Esempi: avanti, indietro, avvia timer, pausa timer, riprendi timer, stop allarme, leggi ricetta, ripeti, interrompi lettura. Tocca il pulsante per disattivare.'));
+  }else{
+    voiceButton.disabled=true;voiceButton.textContent='Riconoscimento vocale non supportato';
+    nav.append(voiceButton,node('p','Il browser non supporta il riconoscimento vocale continuo.'));
   }
   const askBox=node('section');askBox.className='chefai-step';
   askBox.append(node('h3','Hai una domanda su questo passaggio?'));
