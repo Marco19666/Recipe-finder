@@ -42,9 +42,27 @@
  .chefai-action{max-width:100%}
 }
 @media(prefers-reduced-motion:reduce){.chefai-mode{transition:none}}
+
+.chefai-manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 18px;margin-top:6px}
+.chefai-field{min-width:0;padding:15px 16px;border:1px solid #dfe5d9;border-radius:13px;background:#fbfcf8}
+.chefai-field-wide{grid-column:1/-1}
+.chefai-field label{margin:0 0 8px!important;font-size:14px!important;color:var(--green-dark)}
+.chefai-field input,.chefai-field textarea{display:block;width:100%;min-width:0}
+.chefai-field textarea{min-height:112px}
+#manual-servings{max-width:100%}
+@media(max-width:600px){.chefai-manual-grid{grid-template-columns:1fr;gap:11px}.chefai-field-wide{grid-column:auto}.chefai-field{padding:13px}}
 </style></head><body><header class="topbar"><a class="brand" href="/">← Cosa Cucino?</a><span class="top-note">Il tuo assistente ai fornelli</span></header><main class="chefai-wrap"><div class="chefai-head"><div class="eyebrow">IL TUO COMPAGNO IN CUCINA</div><h1>Chef-AI</h1><p>Porta una ricetta, controlliamola insieme e cuciniamo passo dopo passo.</p></div><section class="chefai-card"><h2 id="chefai-section-title">Come vuoi iniziare?</h2><p class="chefai-intro" id="chefai-section-intro">Scegli come vuoi fornire la ricetta. Dopo la scelta vedrai solo gli strumenti necessari.</p><div class="chefai-modes" id="chefai-modes" role="group" aria-label="Modalità di inserimento"><button class="chefai-mode" data-mode="search" aria-pressed="false"><span class="chefai-mode-icon">⌕</span><strong>Cerca una ricetta</strong><small>Trovala sui siti di cucina</small></button><button class="chefai-mode" data-mode="file" aria-pressed="false"><span class="chefai-mode-icon">⇧</span><strong>Carica un file</strong><small>Importa un testo TXT o MD</small></button><button class="chefai-mode" data-mode="manual" aria-pressed="false"><span class="chefai-mode-icon">✎</span><strong>Scrivi la ricetta</strong><small>Inserisci ingredienti e procedimento</small></button><button class="chefai-mode" data-mode="ai" aria-pressed="false"><span class="chefai-mode-icon">✧</span><strong>Falla creare all'AI</strong><small>Descrivi il piatto che desideri</small></button></div>
 <div class="chefai-pane" data-pane="search" hidden><label for="search-q">Cerca nei siti di ricette</label><input id="search-q" placeholder="Es. lasagne al ragù"><button class="chefai-action" id="search-btn">Cerca</button><div id="search-results"></div></div>
 <div class="chefai-pane" data-pane="file" hidden><label for="recipe-file">Carica una ricetta (TXT o MD)</label><input id="recipe-file" type="file" accept=".txt,.md"><p>Per ora sono supportati file di testo TXT e MD. Gli altri formati saranno attivati nella prossima iterazione.</p><label for="file-text">Testo estratto / incolla qui il contenuto</label><textarea id="file-text" placeholder="Il contenuto della ricetta..."></textarea><button class="chefai-action" id="file-btn">Controlla la ricetta</button></div>
-<div class="chefai-pane" data-pane="manual" hidden><label for="manual-text">Nome, ingredienti e procedimento</label><textarea id="manual-text" placeholder="Torta di mele per 6 persone&#10;Ingredienti: ...&#10;Procedimento: ..."></textarea><button class="chefai-action" id="manual-btn">Standardizza e controlla</button></div>
+<div class="chefai-pane" data-pane="manual" hidden>
+<div class="chefai-manual-grid">
+<div class="chefai-field"><label for="manual-name">1. Nome della ricetta</label><input id="manual-name" type="text" maxlength="160" placeholder="Es. Torta di mele"></div>
+<div class="chefai-field"><label for="manual-servings">2. Numero di porzioni</label><input id="manual-servings" type="number" min="1" max="50" step="1" placeholder="Es. 4"></div>
+<div class="chefai-field chefai-field-wide"><label for="manual-ingredients">3. Ingredienti</label><textarea id="manual-ingredients" placeholder="Elenca ingredienti, quantità e unità di misura, uno per riga..."></textarea></div>
+<div class="chefai-field chefai-field-wide"><label for="manual-preparation">4. Preparazione</label><textarea id="manual-preparation" placeholder="Descrivi il procedimento in ordine, indicando tempi e temperature se noti..."></textarea></div>
+<div class="chefai-field chefai-field-wide"><label for="manual-equipment">5. Strumenti</label><textarea id="manual-equipment" placeholder="Es. pentola, padella, forno, frusta, teglia..."></textarea></div>
+</div>
+<button class="chefai-action" id="manual-btn">Standardizza e controlla</button>
+</div>
 <div class="chefai-pane" data-pane="ai" hidden><label for="ai-prompt">Che cosa vuoi cucinare?</label><textarea id="ai-prompt" placeholder="Vorrei preparare un risotto ai funghi per 4 persone, semplice e cremoso..."></textarea><button class="chefai-action" id="ai-btn">Crea e controlla la ricetta</button></div>
-<div id="chefai-status" class="chefai-status" role="status" hidden></div><div id="chefai-result" class="chefai-result"></div></section><p style="text-align:center;margin-top:24px"><a class="chefai-back" href="/">← Torna a Recipe Finder</a></p></main><script src="/chef-ai.js?v=8" defer></script></body></html>
+<div id="chefai-status" class="chefai-status" role="status" hidden></div><div id="chefai-result" class="chefai-result"></div></section><p style="text-align:center;margin-top:24px"><a class="chefai-back" href="/">← Torna a Recipe Finder</a></p></main><script src="/chef-ai.js?v=9" defer></script></body></html>
