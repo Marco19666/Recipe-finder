@@ -304,10 +304,7 @@ $('#manual-btn').onclick=()=>{
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
 let documentParserPromise=null;
 function loadDocumentParser(){
-  const getParser=()=>{
-    const candidates=[window.officeParser,window.docstream,window.officeparser];
-    return candidates.find(parser=>parser&&typeof parser.parseOffice==='function')||null;
-  };
+  const getParser=()=>[window.docstream,window.officeParser,window.officeparser].find(parser=>parser&&typeof parser.parseOffice==='function')||null;
   const existing=getParser();
   if(existing)return Promise.resolve(existing);
   if(!documentParserPromise){
@@ -317,13 +314,34 @@ function loadDocumentParser(){
       script.onload=()=>{
         const parser=getParser();
         if(parser)resolve(parser);
-        else reject(Error('Il file del lettore è stato scaricato, ma non espone la funzione di lettura prevista. Ricarica la pagina e riprova.'));
+        else reject(Error('Il lettore documenti è stato caricato, ma la libreria docstream non è disponibile. Ricarica la pagina e riprova.'));
       };
       script.onerror=()=>reject(Error('Non riesco a scaricare il lettore PDF/Office. Controlla la connessione e riprova.'));
       document.head.append(script);
     }).catch(error=>{documentParserPromise=null;throw error});
   }
   return documentParserPromise;
+}
+async function parseUploadedDocument(parser,file,extension){
+  const config={newlineDelimiter:'\n\n',extractAttachments:false,ocr:false,outputErrorToConsole:true};
+  if(extension==='pdf')config.pdfWorkerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.530/build/pdf.worker.min.mjs';
+  const attempts=[()=>parser.parseOffice(file,config),async()=>parser.parseOffice(await file.arrayBuffer(),config)];
+  let lastError=null;
+  for(const attempt of attempts){
+    try{
+      const parsed=await attempt();
+      let text='';
+      if(parsed&&typeof parsed.toText==='function')text=parsed.toText();
+      else if(parsed&&typeof parsed.toMarkdown==='function')text=parsed.toMarkdown();
+      else if(parsed&&Array.isArray(parsed.content)){
+        const collect=nodes=>(nodes||[]).map(n=>[n.text||'',collect(n.children)].filter(Boolean).join(' ')).join('\n');
+        text=collect(parsed.content);
+      }else text=String(parsed?.text||'');
+      if(String(text||'').trim())return String(text);
+      lastError=Error('Il lettore non ha trovato testo nel documento.');
+    }catch(error){lastError=error}
+  }
+  throw lastError||Error('Formato non leggibile dal lettore documenti.');
 }
 $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
@@ -340,15 +358,7 @@ $('#recipe-file').onchange=async event=>{
     }else{
       say('Sto aprendo '+file.name+' ('+(file.size/1024).toFixed(0)+' KB)…');
       const parser=await loadDocumentParser();
-      const config={newlineDelimiter:'\\n\\n',extractAttachments:false,ocr:false,outputErrorToConsole:true};
-      if(extension==='pdf')config.pdfWorkerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.530/build/pdf.worker.min.mjs';
-      const fileBuffer=await file.arrayBuffer();
-      const parsed=await parser.parseOffice(fileBuffer,config);
-      if(parsed&&typeof parsed.toText==='function')extracted=parsed.toText();
-      else if(parsed&&Array.isArray(parsed.content)){
-        const collect=nodes=>(nodes||[]).map(n=>[n.text||'',collect(n.children)].filter(Boolean).join(' ')).join('\\n');
-        extracted=collect(parsed.content);
-      }else extracted=String(parsed?.text||'');
+      extracted=await parseUploadedDocument(parser,file,extension);
     }
     extracted=String(extracted||'').trim();
     if(!extracted)throw Error('Il file è stato aperto, ma non contiene testo estraibile. Se il PDF è una scansione o una foto, occorre prima applicare l’OCR oppure usare un PDF con testo selezionabile.');
@@ -357,7 +367,9 @@ $('#recipe-file').onchange=async event=>{
     say('✓ '+file.name+' caricato: estratti '+extracted.length.toLocaleString('it-IT')+' caratteri. Il testo è visibile nel riquadro qui sotto; premi “Controlla la ricetta” per continuare.');
   }catch(error){
     console.error('Chef-AI file import error:',error);
-    say('Non sono riuscito a leggere '+file.name+'. '+(error?.message||'Errore sconosciuto.')+' Puoi provare a salvarlo come PDF testuale o DOCX.');
+    const detail=String(error?.message||'Errore sconosciuto.');
+    const isOfficeHtml=/dochtml|html.*unexpected|unexpected.*html/i.test(detail);
+    say('Non sono riuscito a leggere '+file.name+'. '+(isOfficeHtml?'Il convertitore del documento ha generato un errore interno. Prova a salvarlo come DOCX o PDF con testo selezionabile. ':detail+' ' )+'Puoi anche aprire il file e incollare qui il testo della ricetta.');
     event.target.value='';
   }
 };
