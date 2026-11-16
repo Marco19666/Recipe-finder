@@ -322,11 +322,11 @@ function startGuide(recipe,servings,startIndex=0){
   const navigationControls=node('div');navigationControls.className='chefai-player-navigation';navigationControls.append(back,next);
   const audioControls=node('div');audioControls.className='chefai-player-audio';audioControls.append(read,readAll,stopRead);
   nav.append(navigationControls,audioControls);
-  const voiceButton=node('button','🎙 Attiva Wake-up');
+  const voiceButton=node('button','🎙 Parla con Chef-AI');
   voiceButton.className='chefai-player-button chefai-player-voice';voiceButton.type='button';
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SpeechRecognition){
-    let wakeRecognition=null,wakeActive=false,wakeCommandUntil=0,wakeRestartTimer=null;
+    let wakeRecognition=null,wakeActive=false,wakeRestartTimer=null,voiceTurnHandled=false;
     const normalizeVoiceCommand=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
     const executeVoiceCommand=command=>{
       if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();say('Lettura interrotta.')}
@@ -342,68 +342,88 @@ function startGuide(recipe,servings,startIndex=0){
       else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta.');
     };
     const stopWakeListening=()=>{
-      wakeActive=false;wakeCommandUntil=0;
+      wakeActive=false;voiceTurnHandled=false;
       if(wakeRestartTimer)clearTimeout(wakeRestartTimer);
       wakeRestartTimer=null;
-      if(wakeRecognition){try{wakeRecognition.stop()}catch(_){}wakeRecognition=null}
-      voiceButton.textContent='🎙 Attiva Wake-up';voiceButton.setAttribute('aria-pressed','false');
+      if(wakeRecognition){try{wakeRecognition.abort()}catch(_){}wakeRecognition=null}
+      if('speechSynthesis'in window)window.speechSynthesis.cancel();
+      voiceButton.textContent='🎙 Parla con Chef-AI';voiceButton.setAttribute('aria-pressed','false');
     };
-    const startWakeListening=()=>{
+    const startVoiceTurn=()=>{
       if(!wakeActive||document.visibilityState!=='visible')return;
       try{
         wakeRecognition=new SpeechRecognition();
-        wakeRecognition.lang='it-IT';wakeRecognition.continuous=true;wakeRecognition.interimResults=false;wakeRecognition.maxAlternatives=1;
+        voiceTurnHandled=false;
+        wakeRecognition.lang='it-IT';wakeRecognition.continuous=false;wakeRecognition.interimResults=false;wakeRecognition.maxAlternatives=1;
         wakeRecognition.onresult=event=>{
-          for(let i=event.resultIndex;i<event.results.length;i++){
-            if(!event.results[i].isFinal)continue;
-            let command=normalizeVoiceCommand(event.results[i][0].transcript);
-            const wakeMatch=command.match(/\b(?:ehi\s+chef|hey\s+chef|chef)\b/);
-            if(wakeMatch){
-              command=command.slice(wakeMatch.index+wakeMatch[0].length).trim();
-              wakeCommandUntil=Date.now()+10000;
-              if(!command){say('Wake-up attivo: dimmi pure cosa devo fare.');continue}
-            }else if(Date.now()>wakeCommandUntil)continue;
-            wakeCommandUntil=0;
-            executeVoiceCommand(command);
-          }
+          const result=event.results?.[event.resultIndex];
+          if(!result?.isFinal||voiceTurnHandled)return;
+          const command=normalizeVoiceCommand(result[0]?.transcript);
+          if(!command)return;
+          voiceTurnHandled=true;
+          executeVoiceCommand(command);
         };
         wakeRecognition.onerror=event=>{
           if(event.error==='not-allowed'||event.error==='service-not-allowed'){
-            say('Permesso microfono negato. Abilita il microfono nelle impostazioni del browser.');
+            say('Permesso microfono negato. Abilita il microfono nelle impostazioni del browser e riprova.');
+            stopWakeListening();
+          }else if(event.error!=='no-speech'&&event.error!=='aborted'){
+            say('Il riconoscimento vocale non è disponibile in questo momento. Controlla la connessione e il permesso microfono.');
             stopWakeListening();
           }
         };
         wakeRecognition.onend=()=>{
           wakeRecognition=null;
-          if(wakeActive&&document.visibilityState==='visible'){
-            voiceButton.textContent='🟢 Wake-up attivo · «Ehi Chef»';
-            wakeRestartTimer=setTimeout(startWakeListening,700);
+          if(!wakeActive||document.visibilityState!=='visible')return;
+          if(voiceTurnHandled){
+            wakeRestartTimer=setTimeout(promptAndListen,650);
+          }else{
+            wakeRestartTimer=setTimeout(promptAndListen,500);
           }
         };
         wakeRecognition.start();
-        voiceButton.textContent='🟢 Wake-up attivo · «Ehi Chef»';
-        voiceButton.setAttribute('aria-pressed','true');
-        say('Wake-up attivo. Puoi dire «Ehi Chef» seguito da un comando.');
+        voiceButton.textContent='🟢 Ti ascolto…';
+        say('Microfono attivo: ti ascolto.');
       }catch(error){
-        say('Impossibile avviare il riconoscimento vocale. Verifica il permesso microfono.');
-        if(wakeActive){wakeActive=false;voiceButton.textContent='🎙 Attiva Wake-up';voiceButton.setAttribute('aria-pressed','false')}
+        say('Non riesco ad attivare il microfono. Verifica il permesso del browser e riprova.');
+        stopWakeListening();
       }
     };
+    const promptAndListen=()=>{
+      if(!wakeActive||document.visibilityState!=='visible')return;
+      if('speechSynthesis'in window&&'SpeechSynthesisUtterance'in window){
+        try{
+          window.speechSynthesis.cancel();
+          const prompt=new SpeechSynthesisUtterance('Dimmi');
+          prompt.lang='it-IT';prompt.rate=1;
+          prompt.onend=()=>startVoiceTurn();
+          prompt.onerror=()=>startVoiceTurn();
+          voiceButton.textContent='🔊 Chef-AI: Dimmi';
+          say('Chef-AI sta per ascoltarti…');
+          window.speechSynthesis.speak(prompt);
+          return;
+        }catch(_){}
+      }
+      startVoiceTurn();
+    };
     voiceButton.onclick=()=>{
-      if(wakeActive){stopWakeListening();say('Wake-up disattivato.');return}
-      wakeActive=true;startWakeListening();
+      if(wakeActive){stopWakeListening();say('Ascolto vocale disattivato.');return}
+      wakeActive=true;
+      voiceButton.textContent='🔊 Chef-AI: Dimmi';
+      voiceButton.setAttribute('aria-pressed','true');
+      promptAndListen();
     };
     document.addEventListener('visibilitychange',()=>{
       if(!wakeActive)return;
       if(document.visibilityState==='hidden'){
-        if(wakeRecognition){try{wakeRecognition.stop()}catch(_){}wakeRecognition=null}
+        if(wakeRecognition){try{wakeRecognition.abort()}catch(_){}wakeRecognition=null}
         if(wakeRestartTimer)clearTimeout(wakeRestartTimer);
-      }else if(!wakeRecognition)startWakeListening();
+      }else if(!wakeRecognition)promptAndListen();
     });
-    nav.append(voiceButton,node('p','Modalità Wake-up: attiva il microfono una volta, poi dì «Ehi Chef» e il comando. Esempi: avanti, indietro, avvia timer, pausa timer, riprendi timer, stop allarme, leggi ricetta, ripeti, interrompi lettura. Tocca il pulsante per disattivare.'));
+    nav.append(voiceButton,node('p','Tocca “Parla con Chef-AI”: sentirai “Dimmi” e il microfono si attiverà per ascoltare il comando. Dopo ogni comando Chef-AI torna pronto ad ascoltarti. Esempi: avanti, indietro, avvia timer, pausa timer, riprendi timer, stop allarme, leggi ricetta, ripeti, interrompi lettura. Tocca di nuovo per disattivare.'));
   }else{
     voiceButton.disabled=true;voiceButton.textContent='Riconoscimento vocale non supportato';
-    nav.append(voiceButton,node('p','Il browser non supporta il riconoscimento vocale continuo.'));
+    nav.append(voiceButton,node('p','Il browser non supporta il riconoscimento vocale. Puoi usare i pulsanti sullo schermo.'));
   }
   const askBox=node('section');askBox.className='chefai-step';
   askBox.append(node('h3','Hai una domanda su questo passaggio?'));
