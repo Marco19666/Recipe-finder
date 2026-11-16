@@ -166,7 +166,24 @@ $('#search-btn').onclick=async()=>{
     items.forEach(item=>{const button=node('button',item.title);button.className='chefai-action';button.onclick=()=>standardize({source_url:item.url});host.append(button)});
   }catch(error){say(error.message||'Errore durante la ricerca.')}
 };
-$('#manual-btn').onclick=()=>standardize({text:$('#manual-text').value});
+$('#manual-btn').onclick=()=>{
+  const name=$('#manual-name').value.trim();
+  const servings=$('#manual-servings').value.trim();
+  const ingredients=$('#manual-ingredients').value.trim();
+  const preparation=$('#manual-preparation').value.trim();
+  const equipment=$('#manual-equipment').value.trim();
+  if(!name||!servings||!ingredients||!preparation||!equipment){
+    say('Compila tutti e cinque i campi: nome, porzioni, ingredienti, preparazione e strumenti.');
+    return;
+  }
+  const count=Number(servings);
+  if(!Number.isInteger(count)||count<1||count>50){
+    say('Inserisci un numero di porzioni valido, da 1 a 50.');
+    return;
+  }
+  const text='Nome ricetta: '+name+'\\nPorzioni originali: '+count+'\\nIngredienti:\\n'+ingredients+'\\nPreparazione:\\n'+preparation+'\\nStrumenti:\\n'+equipment;
+  standardize({text});
+};
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
 $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
