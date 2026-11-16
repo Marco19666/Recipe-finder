@@ -327,18 +327,18 @@ function startGuide(recipe,servings,startIndex=0){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SpeechRecognition){
     let wakeRecognition=null,wakeActive=false,wakeCommandUntil=0,wakeRestartTimer=null;
-    const normalizeVoiceCommand=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\\s+/g,' ').trim();
+    const normalizeVoiceCommand=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
     const executeVoiceCommand=command=>{
-      if(/\\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\\b/.test(command)){stopTTS();say('Lettura interrotta.')}
-      else if(/\\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();say('Allarme del timer interrotto.')}
-      else if(/\\b(indietro|precedente|passaggio precedente)\\b/.test(command))back.click();
-      else if(/\\b(avanti|successivo|prossimo|passaggio successivo)\\b/.test(command))next.click();
-      else if(/\\b(spegni|azzera|resetta|annulla)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(spegni|azzera|resetta|annulla)\\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
-      else if(/\\b(stop|pausa|ferma|metti in pausa)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(stop|pausa|ferma)\\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
-      else if(/\\b(riprendi|continua|riavvia)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(riprendi|continua)\\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
-      else if(/\\b(avvia|inizia|attiva|fai partire|parti con)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(avvia|inizia|attiva)\\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
-      else if(/\\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l intera ricetta)\\b/.test(command))readAll.click();
-      else if(/\\b(ripeti|rileggi)\\b/.test(command))read.click();
+      if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();say('Lettura interrotta.')}
+      else if(/\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();say('Allarme del timer interrotto.')}
+      else if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
+      else if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command))next.click();
+      else if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
+      else if(/\b(stop|pausa|ferma|metti in pausa)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(stop|pausa|ferma)\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
+      else if(/\b(riprendi|continua|riavvia)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(riprendi|continua)\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
+      else if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
+      else if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l intera ricetta)\b/.test(command))readAll.click();
+      else if(/\b(ripeti|rileggi)\b/.test(command))read.click();
       else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta.');
     };
     const stopWakeListening=()=>{
@@ -357,7 +357,7 @@ function startGuide(recipe,servings,startIndex=0){
           for(let i=event.resultIndex;i<event.results.length;i++){
             if(!event.results[i].isFinal)continue;
             let command=normalizeVoiceCommand(event.results[i][0].transcript);
-            const wakeMatch=command.match(/\\b(?:ehi\\s+chef|hey\\s+chef|chef)\\b/);
+            const wakeMatch=command.match(/\b(?:ehi\s+chef|hey\s+chef|chef)\b/);
             if(wakeMatch){
               command=command.slice(wakeMatch.index+wakeMatch[0].length).trim();
               wakeCommandUntil=Date.now()+10000;
