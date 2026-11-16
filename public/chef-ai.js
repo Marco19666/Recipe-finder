@@ -1,11 +1,11 @@
 const $=s=>document.querySelector(s);
-let mode='search';
+let mode=null;
 const SESSION_KEY='chefai-session-v1';
-document.querySelectorAll('.chefai-mode').forEach(button=>button.addEventListener('click',()=>{
-  mode=button.dataset.mode;
-  document.querySelectorAll('.chefai-mode').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-  document.querySelectorAll('.chefai-pane').forEach(pane=>pane.hidden=pane.dataset.pane!==mode);
-}));
+const modeChooser=$('#chefai-modes'),sectionTitle=$('#chefai-section-title'),sectionIntro=$('#chefai-section-intro');
+const modeNames={search:'Cerca una ricetta',file:'Carica un file',manual:'Scrivi la ricetta',ai:'Crea con Chef-AI'};
+function showModes(){mode=null;modeChooser.hidden=false;sectionIntro.hidden=false;sectionTitle.textContent='Come vuoi iniziare?';document.querySelectorAll('.chefai-pane').forEach(p=>p.hidden=true)}
+function selectMode(next){mode=next;modeChooser.hidden=true;sectionIntro.hidden=true;sectionTitle.textContent=modeNames[mode];document.querySelectorAll('.chefai-pane').forEach(p=>{p.hidden=p.dataset.pane!==mode;if(p.dataset.pane===mode&&!p.querySelector('.chefai-change-mode')){const b=document.createElement('button');b.type='button';b.className='chefai-change-mode';b.textContent='← Cambia modalità';b.addEventListener('click',showModes);p.prepend(b)}})}
+document.querySelectorAll('.chefai-mode').forEach(b=>b.addEventListener('click',()=>selectMode(b.dataset.mode)));
 const status=$('#chefai-status'),result=$('#chefai-result');
 function say(message){status.hidden=false;status.textContent=message}
 function node(tag,value){const item=document.createElement(tag);if(value!==undefined)item.textContent=value;return item}
