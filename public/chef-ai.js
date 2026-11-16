@@ -190,11 +190,45 @@ $('#manual-btn').onclick=()=>{
   standardize({text});
 };
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
+let documentParserPromise=null;
+function loadDocumentParser(){
+  if(window.docstream?.parseOffice)return Promise.resolve(window.docstream);
+  if(!documentParserPromise){
+    documentParserPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/@jose.espana/docstream@0.1.3/dist/officeparser.browser.js';
+      script.onload=()=>window.docstream?.parseOffice?resolve(window.docstream):reject(Error('Lettore documenti non disponibile.'));
+      script.onerror=()=>reject(Error('Non riesco a caricare il lettore documenti. Controlla la connessione e riprova.'));
+      document.head.append(script);
+    }).catch(error=>{documentParserPromise=null;throw error});
+  }
+  return documentParserPromise;
+}
 $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
-  if(!/\.(txt|md)$/i.test(file.name)){say('In questa versione sono supportati file TXT e MD. Per PDF o DOCX incolla il testo nel campo sottostante.');event.target.value='';return}
-  if(file.size>1000000){say('Il file supera 1 MB.');event.target.value='';return}
-  $('#file-text').value=await file.text();say('File caricato. Ora puoi controllare la ricetta.');
+  const extension=(file.name.split('.').pop()||'').toLowerCase();
+  const supported=['pdf','doc','docx','xls','xlsx','txt','md'];
+  if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT o MD.');event.target.value='';return}
+  if(file.size>5*1024*1024){say('Il file supera il limite di 5 MB.');event.target.value='';return}
+  try{
+    let extracted='';
+    if(extension==='txt'||extension==='md'){
+      extracted=await file.text();
+    }else{
+      say('Sto leggendo il documento nel browser…');
+      const parser=await loadDocumentParser();
+      const parsed=await parser.parseOffice(file,{newlineDelimiter:'\\n\\n',extractAttachments:false,ocr:false,outputErrorToConsole:false});
+      extracted=typeof parsed.toText==='function'?parsed.toText():String(parsed.text||'');
+    }
+    extracted=String(extracted||'').trim();
+    if(!extracted){throw Error('Non ho trovato testo leggibile nel file. Se è un PDF composto da immagini o scansioni, serve una versione con testo selezionabile.')}
+    if(extracted.length>80000){throw Error('Il documento contiene troppo testo (oltre 80.000 caratteri). Carica una versione più breve, solo con la ricetta.')}
+    $('#file-text').value=extracted;
+    say('File letto correttamente ('+extension.toUpperCase()+'). Ho estratto '+extracted.length.toLocaleString('it-IT')+' caratteri. Ora puoi controllare la ricetta.');
+  }catch(error){
+    say(error.message||'Non sono riuscito a leggere il file. Prova a salvarlo in un altro formato.');
+    event.target.value='';
+  }
 };
 function servingsFromRequest(value){
   const text=String(value||'');
