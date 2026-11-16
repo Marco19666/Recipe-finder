@@ -192,15 +192,20 @@ $('#manual-btn').onclick=()=>{
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
 let documentParserPromise=null;
 function loadDocumentParser(){
-  if(window.docstream&&typeof window.docstream.parseOffice==='function')return Promise.resolve(window.docstream);
+  const getParser=()=>{
+    const candidates=[window.officeParser,window.docstream,window.officeparser];
+    return candidates.find(parser=>parser&&typeof parser.parseOffice==='function')||null;
+  };
+  const existing=getParser();
+  if(existing)return Promise.resolve(existing);
   if(!documentParserPromise){
     documentParserPromise=new Promise((resolve,reject)=>{
       const script=document.createElement('script');
       script.src='https://cdn.jsdelivr.net/npm/@jose.espana/docstream@0.1.3/dist/officeparser.browser.js';
       script.onload=()=>{
-        const parser=window.docstream;
-        if(parser&&typeof parser.parseOffice==='function')resolve(parser);
-        else reject(Error('Il lettore documenti è stato caricato ma non si è inizializzato. Riprova o usa un PDF con testo selezionabile.'));
+        const parser=getParser();
+        if(parser)resolve(parser);
+        else reject(Error('Il file del lettore è stato scaricato, ma non espone la funzione di lettura prevista. Ricarica la pagina e riprova.'));
       };
       script.onerror=()=>reject(Error('Non riesco a scaricare il lettore PDF/Office. Controlla la connessione e riprova.'));
       document.head.append(script);
