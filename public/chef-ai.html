@@ -51,6 +51,42 @@
 .chefai-field textarea{min-height:112px}
 #manual-servings{max-width:100%}
 @media(max-width:600px){.chefai-manual-grid{grid-template-columns:1fr;gap:11px}.chefai-field-wide{grid-column:auto}.chefai-field{padding:13px}}
+
+/* Chef-AI: player controls */
+.chefai-step{padding:clamp(18px,3vw,26px);border-radius:18px;box-shadow:0 8px 24px rgba(35,54,39,.055)}
+.chefai-step>small{display:inline-flex;align-items:center;padding:7px 11px;border-radius:30px;background:#e9efe4;color:var(--green-dark);font-size:10px;letter-spacing:.12em}
+.chefai-step>p{color:var(--ink)}
+.chefai-player{display:grid;gap:12px;margin:16px 0 8px}
+.chefai-player-navigation,.chefai-player-audio{display:grid;gap:9px}
+.chefai-player-navigation{grid-template-columns:1fr 1fr}
+.chefai-player-audio{grid-template-columns:1.1fr 1.1fr .85fr;padding:12px;border:1px solid #dfe5d9;border-radius:15px;background:#fbfcf8}
+.chefai-player-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;margin:0;padding:11px 15px;border:1px solid #d9e2d4;border-radius:11px;background:#fff;color:var(--green-dark);font:650 13px 'DM Sans',sans-serif;cursor:pointer;transition:background .16s,border-color .16s,transform .16s;white-space:normal}
+.chefai-player-button:hover{background:#edf2e9;border-color:#aebfa8;transform:translateY(-1px)}
+.chefai-player-button:focus-visible{outline:3px solid #7d9b7355;outline-offset:2px}
+.chefai-player-button:disabled{opacity:.42;cursor:not-allowed;transform:none}
+.chefai-player-primary,.chefai-player-play{background:var(--green-dark);border-color:var(--green-dark);color:#fff}
+.chefai-player-primary:hover,.chefai-player-play:hover{background:var(--green);border-color:var(--green);color:#fff}
+.chefai-player-play{background:#e9efe4;border-color:#dce5d7;color:var(--green-dark)}
+.chefai-player-stop{background:#fff7f4;border-color:#efd9d1;color:#9a4938}
+.chefai-player-stop:hover{background:#fbe9e3;border-color:#dfb9ac}
+.chefai-player-voice{grid-column:1/-1;width:100%;background:#f3f5ef}
+.chefai-timer-panel{display:grid;justify-items:center;gap:10px;margin:18px 0 4px;padding:20px 16px;border:1px solid #dce5d7;border-radius:17px;background:linear-gradient(145deg,#f8faf5,#edf2e9);text-align:center}
+.chefai-timer-label{margin:0!important;color:var(--green-dark)!important;font-size:10px!important;font-weight:750;letter-spacing:.16em}
+.chefai-timer-display{margin:0!important;color:var(--ink)!important;font:700 clamp(38px,8vw,54px)/1 'DM Sans',sans-serif!important;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.chefai-timer-controls{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;width:100%}
+.chefai-timer-controls .chefai-player-button{min-width:100px}
+.chefai-player-alarm{background:#a84635;border-color:#a84635;color:#fff}
+.chefai-player-alarm:hover{background:#873727;border-color:#873727;color:#fff}
+.chefai-player-alarm[hidden]{display:none!important}
+@media(max-width:600px){
+ .chefai-player-audio{grid-template-columns:1fr 1fr;padding:9px}
+ .chefai-player-stop{grid-column:1/-1}
+ .chefai-player-button{min-height:44px;padding:10px 11px;font-size:12px}
+ .chefai-timer-panel{padding:17px 12px}
+ .chefai-timer-controls .chefai-player-button{flex:1 1 calc(50% - 8px);min-width:0}
+}
+@media(prefers-reduced-motion:reduce){.chefai-player-button{transition:none}}
+
 </style></head><body><header class="topbar"><a class="brand" href="/">← Cosa Cucino?</a><span class="top-note">Il tuo assistente ai fornelli</span></header><main class="chefai-wrap"><div class="chefai-head"><div class="eyebrow">IL TUO COMPAGNO IN CUCINA</div><h1>Chef-AI</h1><p>Porta una ricetta, controlliamola insieme e cuciniamo passo dopo passo.</p></div><section class="chefai-card"><h2 id="chefai-section-title">Come vuoi iniziare?</h2><p class="chefai-intro" id="chefai-section-intro">Scegli come vuoi fornire la ricetta. Dopo la scelta vedrai solo gli strumenti necessari.</p><div class="chefai-modes" id="chefai-modes" role="group" aria-label="Modalità di inserimento"><button class="chefai-mode" data-mode="search" aria-pressed="false"><span class="chefai-mode-icon">⌕</span><strong>Cerca una ricetta</strong><small>Trovala sui siti di cucina</small></button><button class="chefai-mode" data-mode="file" aria-pressed="false"><span class="chefai-mode-icon">⇧</span><strong>Carica un file</strong><small>Importa un testo TXT o MD</small></button><button class="chefai-mode" data-mode="manual" aria-pressed="false"><span class="chefai-mode-icon">✎</span><strong>Scrivi la ricetta</strong><small>Inserisci ingredienti e procedimento</small></button><button class="chefai-mode" data-mode="ai" aria-pressed="false"><span class="chefai-mode-icon">✧</span><strong>Falla creare all'AI</strong><small>Descrivi il piatto che desideri</small></button></div>
 <div class="chefai-pane" data-pane="search" hidden><label for="search-q">Cerca nei siti di ricette</label><input id="search-q" placeholder="Es. lasagne al ragù"><button class="chefai-action" id="search-btn">Cerca</button><div id="search-results"></div></div>
 <div class="chefai-pane" data-pane="file" hidden><label for="recipe-file">Carica una ricetta (PDF, DOC, DOCX, XLS, XLSX, TXT o MD)</label><input id="recipe-file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.md"><p>Formati supportati: PDF, Word (DOC e DOCX), Excel (XLS e XLSX), TXT e MD. Dimensione massima: 5 MB. I file vengono letti nel browser e il testo estratto viene inviato a Chef-AI.</p><label for="file-text">Testo estratto / incolla qui il contenuto</label><textarea id="file-text" placeholder="Il contenuto della ricetta..."></textarea><button class="chefai-action" id="file-btn">Controlla la ricetta</button></div>
@@ -66,4 +102,4 @@
 <button class="chefai-action" id="manual-btn">Standardizza e controlla</button>
 </div>
 <div class="chefai-pane" data-pane="ai" hidden><label for="ai-prompt">Che cosa vuoi cucinare?</label><textarea id="ai-prompt" placeholder="Vorrei preparare un risotto ai funghi per 4 persone, semplice e cremoso..."></textarea><button class="chefai-action" id="ai-btn">Crea e controlla la ricetta</button></div>
-<div id="chefai-status" class="chefai-status" role="status" hidden></div><div id="chefai-result" class="chefai-result"></div></section><p style="text-align:center;margin-top:24px"><a class="chefai-back" href="/">← Torna a Recipe Finder</a></p></main><script src="/chef-ai.js?v=24" defer></script></body></html>
+<div id="chefai-status" class="chefai-status" role="status" hidden></div><div id="chefai-result" class="chefai-result"></div></section><p style="text-align:center;margin-top:24px"><a class="chefai-back" href="/">← Torna a Recipe Finder</a></p></main><script src="/chef-ai.js?v=25" defer></script></body></html>
