@@ -192,13 +192,17 @@ $('#manual-btn').onclick=()=>{
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
 let documentParserPromise=null;
 function loadDocumentParser(){
-  if(window.docstream?.parseOffice)return Promise.resolve(window.docstream);
+  if(window.docstream&&typeof window.docstream.parseOffice==='function')return Promise.resolve(window.docstream);
   if(!documentParserPromise){
     documentParserPromise=new Promise((resolve,reject)=>{
       const script=document.createElement('script');
       script.src='https://cdn.jsdelivr.net/npm/@jose.espana/docstream@0.1.3/dist/officeparser.browser.js';
-      script.onload=()=>window.docstream?.parseOffice?resolve(window.docstream):reject(Error('Lettore documenti non disponibile.'));
-      script.onerror=()=>reject(Error('Non riesco a caricare il lettore documenti. Controlla la connessione e riprova.'));
+      script.onload=()=>{
+        const parser=window.docstream;
+        if(parser&&typeof parser.parseOffice==='function')resolve(parser);
+        else reject(Error('Il lettore documenti è stato caricato ma non si è inizializzato. Riprova o usa un PDF con testo selezionabile.'));
+      };
+      script.onerror=()=>reject(Error('Non riesco a scaricare il lettore PDF/Office. Controlla la connessione e riprova.'));
       document.head.append(script);
     }).catch(error=>{documentParserPromise=null;throw error});
   }
@@ -210,23 +214,32 @@ $('#recipe-file').onchange=async event=>{
   const supported=['pdf','doc','docx','xls','xlsx','txt','md'];
   if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT o MD.');event.target.value='';return}
   if(file.size>5*1024*1024){say('Il file supera il limite di 5 MB.');event.target.value='';return}
+  $('#file-text').value='';
   try{
     let extracted='';
     if(extension==='txt'||extension==='md'){
+      say('Sto leggendo il file di testo…');
       extracted=await file.text();
     }else{
-      say('Sto leggendo il documento nel browser…');
+      say('Sto aprendo '+file.name+' ('+(file.size/1024).toFixed(0)+' KB)…');
       const parser=await loadDocumentParser();
-      const parsed=await parser.parseOffice(file,{newlineDelimiter:'\\n\\n',extractAttachments:false,ocr:false,outputErrorToConsole:false});
-      extracted=typeof parsed.toText==='function'?parsed.toText():String(parsed.text||'');
+      const config={newlineDelimiter:'\\n\\n',extractAttachments:false,ocr:false,outputErrorToConsole:true};
+      if(extension==='pdf')config.pdfWorkerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.530/build/pdf.worker.min.mjs';
+      const parsed=await parser.parseOffice(file,config);
+      if(parsed&&typeof parsed.toText==='function')extracted=parsed.toText();
+      else if(parsed&&Array.isArray(parsed.content)){
+        const collect=nodes=>(nodes||[]).map(n=>[n.text||'',collect(n.children)].filter(Boolean).join(' ')).join('\\n');
+        extracted=collect(parsed.content);
+      }else extracted=String(parsed?.text||'');
     }
     extracted=String(extracted||'').trim();
-    if(!extracted){throw Error('Non ho trovato testo leggibile nel file. Se è un PDF composto da immagini o scansioni, serve una versione con testo selezionabile.')}
-    if(extracted.length>80000){throw Error('Il documento contiene troppo testo (oltre 80.000 caratteri). Carica una versione più breve, solo con la ricetta.')}
+    if(!extracted)throw Error('Il file è stato aperto, ma non contiene testo estraibile. Se il PDF è una scansione o una foto, occorre prima applicare l’OCR oppure usare un PDF con testo selezionabile.');
+    if(extracted.length>80000)throw Error('Il documento contiene troppo testo (oltre 80.000 caratteri). Carica una versione più breve, solo con la ricetta.');
     $('#file-text').value=extracted;
-    say('File letto correttamente ('+extension.toUpperCase()+'). Ho estratto '+extracted.length.toLocaleString('it-IT')+' caratteri. Ora puoi controllare la ricetta.');
+    say('✓ '+file.name+' caricato: estratti '+extracted.length.toLocaleString('it-IT')+' caratteri. Il testo è visibile nel riquadro qui sotto; premi “Controlla la ricetta” per continuare.');
   }catch(error){
-    say(error.message||'Non sono riuscito a leggere il file. Prova a salvarlo in un altro formato.');
+    console.error('Chef-AI file import error:',error);
+    say('Non sono riuscito a leggere '+file.name+'. '+(error?.message||'Errore sconosciuto.')+' Puoi provare a salvarlo come PDF testuale o DOCX.');
     event.target.value='';
   }
 };
