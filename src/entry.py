@@ -599,7 +599,12 @@ async def chef_ai_speech(request: Request):
         audio=result.get("audio") if isinstance(result,dict) else getattr(result,"audio",None)
         if not isinstance(audio,str) or not audio.startswith("https://"):
             raise RuntimeError("Il servizio vocale non ha restituito un audio valido.")
-        return {"audio_url":audio}
+        async with httpx.AsyncClient(timeout=35.0,follow_redirects=True) as client:
+            audio_response=await client.get(audio)
+            audio_response.raise_for_status()
+        if not audio_response.content:
+            raise RuntimeError("Il file audio generato è vuoto.")
+        return Response(content=audio_response.content,media_type="audio/mpeg",headers={"Cache-Control":"no-store"})
     except Exception as exc:
         print("Chef-AI sintesi vocale fallita:",type(exc).__name__,str(exc)[:500])
         raise HTTPException(status_code=503,detail="La voce naturale non è momentaneamente disponibile.") from exc
