@@ -309,7 +309,7 @@ function startGuide(recipe,servings,startIndex=0){
         utterance.onerror=event=>{say('La voce del dispositivo non è partita ('+(event.error||'errore audio')+'). Controlla volume e impostazioni audio.');if(typeof onComplete==='function')onComplete()};
         window.speechSynthesis.speak(utterance);
         say('Voce naturale non disponibile: provo la voce italiana del dispositivo…');
-      }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'))}
+      }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'));if(typeof onComplete==='function')onComplete()}
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
@@ -335,14 +335,14 @@ function startGuide(recipe,servings,startIndex=0){
       if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();speakText('Lettura interrotta.',done);return true}
       if(/\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();speakText('Allarme del timer interrotto.',done);return true}
       if(/\b(indietro|precedente|passaggio precedente)\b/.test(command)){back.click();speakText(steps[index].instruction,done);return true}
-      if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command)){next.click();if(area.contains(nav)&&steps[index])speakText(steps[index].instruction,done);else speakText('Hai terminato la ricetta.',done);return true}
+      if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command)){next.click();if(!nav.hidden&&steps[index])speakText(steps[index].instruction,done);else speakText('Hai terminato la ricetta.',done);return true}
       if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();speakText(area._chefTimer?'Timer azzerato.':'Questo passaggio non prevede un timer.',done);return true}
       if(/\b(stop|pausa|ferma|metti in pausa)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(stop|pausa|ferma)\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();speakText(area._chefTimer?'Timer in pausa.':'Questo passaggio non prevede un timer.',done);return true}
       if(/\b(riprendi|continua|riavvia)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(riprendi|continua)\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();speakText(area._chefTimer?'Timer ripreso.':'Questo passaggio non prevede un timer.',done);return true}
       if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();speakText(area._chefTimer?'Timer avviato.':'Questo passaggio non prevede un timer.',done);return true}
       if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l intera ricetta)\b/.test(command)){const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>[item.name,item.quantity!==null&&item.quantity!==undefined?item.quantity:null,item.unit||null].filter(value=>value!==null&&value!=='').join(', ')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');speakText(fullText,done);return true}
       if(/\b(leggi passaggio|leggi il passaggio|leggi questo passaggio|leggimi il passaggio|leggi il passo)\b/.test(command)){speakText(steps[index].instruction,done);return true}
-      if(/\b(termina|fine|concludi|ho finito|termina guida|chiudi guida)\b/.test(command)){next.click();speakText('Guida terminata.',done);return true}
+      if(/\b(termina|fine|concludi|ho finito|termina guida|chiudi guida)\b/.test(command)){index=steps.length-1;next.click();speakText('Guida terminata.',done);return true}
       if(/\b(ripeti|rileggi)\b/.test(command)){speakText(steps[index].instruction,done);return true}
       return false;
     };
