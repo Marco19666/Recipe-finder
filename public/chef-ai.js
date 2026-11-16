@@ -159,22 +159,40 @@ function startGuide(recipe,servings,startIndex=0){
   const stopTTS=()=>{if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}};
   const speakText=async text=>{
     stopTTS();
+    say('Sto preparando la voce…');
     try{
       const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-      if(!AudioContextClass)throw Error('Questo browser non supporta la riproduzione audio avanzata.');
+      if(!AudioContextClass)throw Error('AudioContext non supportato');
       if(!ttsContext)ttsContext=new AudioContextClass();
       const resumePromise=ttsContext.state==='suspended'?ttsContext.resume():Promise.resolve();
       let audioBuffer=speechCache.get(text);
       if(!audioBuffer){
-        const response=await fetch('/api/chef-ai/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-        if(!response.ok){let detail='Servizio vocale non disponibile.';try{detail=(await response.json()).detail||detail}catch(_){}throw Error(detail)}
-        const bytes=await response.arrayBuffer();if(!bytes.byteLength)throw Error('Il servizio vocale ha restituito un audio vuoto.');
+        const controller=new AbortController();
+        const timeout=setTimeout(()=>controller.abort(),40000);
+        let response;
+        try{response=await fetch('/api/chef-ai/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text}),signal:controller.signal})}
+        finally{clearTimeout(timeout)}
+        if(!response.ok){let detail='Servizio vocale non disponibile (HTTP '+response.status+').';try{detail=(await response.json()).detail||detail}catch(_){}throw Error(detail)}
+        const bytes=await response.arrayBuffer();if(!bytes.byteLength)throw Error('Audio vuoto');
         audioBuffer=await ttsContext.decodeAudioData(bytes.slice(0));speechCache.set(text,audioBuffer);
       }
       await resumePromise;
-      if(ttsContext.state!=='running')throw Error('Il browser ha bloccato l’audio. Tocca nuovamente Leggi.');
+      if(ttsContext.state!=='running')throw Error('AudioContext non attivo');
       ttsSource=ttsContext.createBufferSource();ttsSource.buffer=audioBuffer;ttsSource.connect(ttsContext.destination);ttsSource.onended=()=>{ttsSource=null};ttsSource.start(0);
-    }catch(error){console.warn('Chef-AI neural TTS:',error);say('Non riesco ad avviare la voce naturale: '+(error.message||'errore audio')+'. Tocca di nuovo “Leggi” e verifica che il dispositivo non sia in modalità silenziosa.')}
+      say('Riproduzione della voce naturale in corso.');
+    }catch(error){
+      console.warn('Chef-AI neural TTS:',error);
+      try{
+        if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale del dispositivo non supportata.');
+        window.speechSynthesis.cancel();
+        const utterance=new SpeechSynthesisUtterance(text);utterance.lang='it-IT';utterance.rate=0.96;utterance.pitch=1;
+        const voices=window.speechSynthesis.getVoices();const italian=voices.find(v=>/^it(-|_)/i.test(v.lang));if(italian)utterance.voice=italian;
+        utterance.onstart=()=>say('Lettura in corso con la voce italiana del dispositivo.');
+        utterance.onerror=event=>say('La voce del dispositivo non è partita ('+(event.error||'errore audio')+'). Controlla volume e impostazioni audio.');
+        window.speechSynthesis.speak(utterance);
+        say('Voce naturale non disponibile: provo la voce italiana del dispositivo…');
+      }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'))}
+    }
   };
   read.onclick=()=>speakText(steps[index].instruction);
   const readAll=node('button','📖 Leggi ricetta');readAll.className='chefai-action';readAll.type='button';
