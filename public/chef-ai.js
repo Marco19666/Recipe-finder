@@ -169,6 +169,7 @@ $('#search-btn').onclick=async()=>{
 $('#manual-btn').onclick=()=>{
   const name=$('#manual-name').value.trim();
   const servings=$('#manual-servings').value.trim();
+  const cookingTime=$('#manual-cooking-time').value.trim();
   const ingredients=$('#manual-ingredients').value.trim();
   const preparation=$('#manual-preparation').value.trim();
   const equipment=$('#manual-equipment').value.trim();
@@ -181,7 +182,11 @@ $('#manual-btn').onclick=()=>{
     say('Inserisci un numero di porzioni valido, da 1 a 50.');
     return;
   }
-  const text='Nome ricetta: '+name+'\\nPorzioni originali: '+count+'\\nIngredienti:\\n'+ingredients+'\\nPreparazione:\\n'+preparation+'\\nStrumenti:\\n'+equipment;
+  if(cookingTime&&(!Number.isInteger(Number(cookingTime))||Number(cookingTime)<0||Number(cookingTime)>1440)){
+    say('Inserisci un tempo di cottura valido in minuti (da 0 a 1440), oppure lascia il campo vuoto.');
+    return;
+  }
+  const text='Nome ricetta: '+name+'\\nPorzioni originali: '+count+(cookingTime?'\\nTempo di cottura: '+cookingTime+' minuti':'')+'\\nIngredienti:\\n'+ingredients+'\\nPreparazione:\\n'+preparation+'\\nStrumenti:\\n'+equipment;
   standardize({text});
 };
 $('#file-btn').onclick=()=>standardize({text:$('#file-text').value});
