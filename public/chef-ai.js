@@ -251,6 +251,7 @@ function startGuide(recipe,servings,startIndex=0){
       .replace(/\bpz\.?(?!\w)/gi,'porzioni')
       .replace(/\bporz\.?(?!\w)/gi,'porzioni')
       .replace(/\bgr\.?(?!\w)/gi,'grammi')
+      .replace(/\bn\s*\.?\s*(?=\d)/gi,'numero ')
       .replace(/(\d)\s*g\b/gi,'$1 grammi')
       .replace(/\bkg\.?(?!\w)/gi,'chilogrammi')
       .replace(/\bmg\.?(?!\w)/gi,'milligrammi')
@@ -338,6 +339,8 @@ function startGuide(recipe,servings,startIndex=0){
       else if(/\b(riprendi|continua|riavvia)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(riprendi|continua)\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
       else if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
       else if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l intera ricetta)\b/.test(command))readAll.click();
+      else if(/\b(leggi passaggio|leggi il passaggio|leggi questo passaggio|leggimi il passaggio)\b/.test(command))read.click();
+      else if(/\b(termina|fine|concludi|ho finito|termina guida|chiudi guida)\b/.test(command))next.click();
       else if(/\b(ripeti|rileggi)\b/.test(command))read.click();
       else say('Non ho riconosciuto il comando: prova “avanti”, “indietro”, “avvia timer” o “pausa timer”.');
     };
@@ -361,7 +364,8 @@ function startGuide(recipe,servings,startIndex=0){
             const result=event.results[i];
             if(!result?.isFinal)continue;
             const alternatives=Array.from(result).map(item=>normalizeVoiceCommand(item.transcript)).filter(Boolean);
-            const command=alternatives[0]||'';
+            const known=alternatives.find(value=>/\b(avanti|indietro|precedente|successivo|prossimo|termina|fine|concludi|leggi|ricetta|passaggio|timer|ripeti|interrompi|ferma|spegni|pausa|riprendi|avvia|inizia|attiva)\b/.test(value));
+            const command=known||alternatives.sort((a,b)=>b.length-a.length)[0]||'';
             if(!command||voiceTurnHandled)continue;
             voiceTurnHandled=true;
             executeVoiceCommand(command);
