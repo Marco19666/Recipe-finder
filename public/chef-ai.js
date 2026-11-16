@@ -157,7 +157,29 @@ function startGuide(recipe,servings,startIndex=0){
   const speechCache=new Map();
   let ttsContext=null,ttsSource=null;
   const stopTTS=()=>{if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}};
+  function expandCookingAbbreviations(value){
+    return String(value||'')
+      .replace(/\\bq\\s*\\.?\\s*b\\.?\\b/gi,'quanto basta')
+      .replace(/\\bq\\.?\\s*b\\.?/gi,'quanto basta')
+      .replace(/\\bpz\\.?\\b/gi,'porzioni')
+      .replace(/\\bporz\\.?\\b/gi,'porzioni')
+      .replace(/\\bgr\\.?\\b/gi,'grammi')
+      .replace(/(\\d)\\s*g\\b/gi,'$1 grammi')
+      .replace(/\\bkg\\.?\\b/gi,'chilogrammi')
+      .replace(/\\bmg\\.?\\b/gi,'milligrammi')
+      .replace(/\\bml\\.?\\b/gi,'millilitri')
+      .replace(/\\bcl\\.?\\b/gi,'centilitri')
+      .replace(/(\\d)\\s*l\\b/gi,'$1 litri')
+      .replace(/\\bcucch(?:\\.\\s*|\\s*)no\\.?\\b/gi,'cucchiaino')
+      .replace(/\\bcucch(?:\\.\\s*|\\s*)\\.?\\b/gi,'cucchiaio')
+      .replace(/\\bmin\\.?\\b/gi,'minuti')
+      .replace(/\\bsec\\.?\\b/gi,'secondi')
+      .replace(/\\bore\\.?\\b/gi,'ore')
+      .replace(/°\\s*C\\b/gi,'gradi Celsius')
+      .replace(/\\b(?:forno\\s*)?(ventilato)\\b/gi,'ventilato');
+  }
   const speakText=async text=>{
+    text=expandCookingAbbreviations(text);
     stopTTS();
     say('Sto preparando la voce…');
     try{
