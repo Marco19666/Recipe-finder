@@ -584,6 +584,27 @@ async def chef_ai_standardize(request: Request):
         raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Dettaglio tecnico: "+str(exc)[:700]) from exc
 
 
+@app.post("/api/chef-ai/speech")
+async def chef_ai_speech(request: Request):
+    try:
+        payload=await request.json()
+    except Exception:
+        raise HTTPException(status_code=400,detail="Testo non valido.")
+    text=str(payload.get("text") or "").strip() if isinstance(payload,dict) else ""
+    if not text or len(text)>15000:
+        raise HTTPException(status_code=400,detail="Il testo da leggere deve contenere da 1 a 15.000 caratteri.")
+    try:
+        env=request.scope["env"]
+        result=await env.AI.run("xai/grok-tts",{"text":text,"language":"it","voice_id":"ara","output_format":{"codec":"mp3","sample_rate":44100,"bit_rate":192000}})
+        audio=result.get("audio") if isinstance(result,dict) else getattr(result,"audio",None)
+        if not isinstance(audio,str) or not audio.startswith("https://"):
+            raise RuntimeError("Il servizio vocale non ha restituito un audio valido.")
+        return {"audio_url":audio}
+    except Exception as exc:
+        print("Chef-AI sintesi vocale fallita:",type(exc).__name__,str(exc)[:500])
+        raise HTTPException(status_code=503,detail="La voce naturale non è momentaneamente disponibile.") from exc
+
+
 @app.get("/api/chef/status")
 async def chef_status(request: Request, device_id: str = Query(min_length=16, max_length=100)):
     import re
