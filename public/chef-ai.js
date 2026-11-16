@@ -55,26 +55,35 @@ function render(recipe,presetServings=null){
   });
   const blocked=audit.status==='blocking'||recipe.validation?.status==='errore'||findings.some(f=>f.severity==='blocking'&&!f.resolved)||validationIssues.some(issue=>issue.severity==='blocking');
   if(blocked){result.append(node('p','La ricetta presenta problemi bloccanti: occorre chiarirli o correggerli prima di avviare la guida.'));return}
-  const panel=node('div');panel.append(node('h3',presetServings?'Hai indicato '+presetServings+' porzioni nella richiesta':'Quante porzioni vuoi preparare?'));
-  const input=node('input');input.type='number';input.min='1';input.max='50';input.step='1';input.inputMode='numeric';input.value=presetServings||recipe.servings?.original||2;input.setAttribute('aria-label','Numero di porzioni desiderate');
-  panel.append(input);
-  const go=node('button',presetServings?'Conferma '+presetServings+' porzioni e avvia Chef Guidato':'Conferma porzioni e avvia Chef Guidato');go.className='chefai-action';
+  const panel=node('div');
+  const hasKnownOriginal=Number(recipe.servings?.original)>0;
+  if(!hasKnownOriginal){
+    panel.append(node('p','La ricetta non specifica le porzioni di partenza. Per ricalibrare correttamente le dosi, indica quante porzioni produce la ricetta originale e quante ne vuoi preparare.'));
+  }else{
+    panel.append(node('h3',presetServings?'Hai indicato '+presetServings+' porzioni nella richiesta':'Quante porzioni vuoi preparare?'));
+  }
+  let originalInput=null;
+  if(!hasKnownOriginal){
+    const originalLabel=node('label','Porzioni della ricetta originale');
+    originalInput=node('input');originalInput.type='number';originalInput.min='1';originalInput.max='50';originalInput.step='1';originalInput.inputMode='numeric';originalInput.placeholder='Es. 4';originalInput.setAttribute('aria-label','Porzioni della ricetta originale');
+    panel.append(originalLabel,originalInput);
+  }
+  const targetLabel=node('label','Porzioni che vuoi preparare');
+  const input=node('input');input.type='number';input.min='1';input.max='50';input.step='1';input.inputMode='numeric';input.value=presetServings||(hasKnownOriginal?recipe.servings.original:'');input.placeholder='Es. 2';input.setAttribute('aria-label','Numero di porzioni desiderate');
+  panel.append(targetLabel,input);
+  const go=node('button','Conferma porzioni e avvia Chef Guidato');go.className='chefai-action';
   go.onclick=()=>{
     const servings=Number(input.value);
-    if(!Number.isInteger(servings)||servings<1||servings>50){say('Inserisci un numero di porzioni valido, da 1 a 50.');return}
-    const original=Number(recipe.servings?.original)||Number(presetServings);
-    const hasOriginal=Number.isFinite(original)&&original>0;
+    const original=hasKnownOriginal?Number(recipe.servings.original):Number(originalInput?.value);
+    if(!Number.isInteger(original)||original<1||original>50){say('Indica quante porzioni produce la ricetta originale: senza questo dato non posso ricalcolare le dosi.');return}
+    if(!Number.isInteger(servings)||servings<1||servings>50){say('Inserisci un numero di porzioni desiderato valido, da 1 a 50.');return}
     const scaled=structuredClone(recipe);
-    if(hasOriginal){
-      const factor=servings/original;
-      scaled.ingredients=(scaled.ingredients||[]).map(item=>{
-        if(item.scaling==='linear'&&typeof item.quantity==='number')return {...item,quantity:Math.round(item.quantity*factor*1000)/1000};
-        return {...item};
-      });
-    }else{
-      say('Porzioni originali non indicate: avvio la guida mantenendo invariate le quantità degli ingredienti.');
-    }
-    scaled.servings={...scaled.servings,requested:servings,confirmed:true};
+    const factor=servings/original;
+    scaled.ingredients=(scaled.ingredients||[]).map(item=>{
+      if(item.scaling==='linear'&&typeof item.quantity==='number')return {...item,quantity:Math.round(item.quantity*factor*1000)/1000};
+      return {...item};
+    });
+    scaled.servings={...scaled.servings,original,requested:servings,confirmed:true};
     saveSession(scaled,servings,0);
     startGuide(scaled,servings,0);
   };
@@ -84,7 +93,7 @@ function startGuide(recipe,servings,startIndex=0){
   const steps=Array.isArray(recipe.steps)?recipe.steps:[];
   if(!steps.length){say('Questa ricetta non contiene passaggi da seguire.');return}
   result.replaceChildren(node('h2','Chef Guidato'));
-  result.append(node('p','Porzioni: '+servings+'. Le quantità scalabili sono state ricalcolate; tempi e temperature restano quelli della ricetta.'));
+  result.append(node('p','Porzioni: '+servings+'. Le quantità numeriche lineari sono state ricalcolate in base alle porzioni; quantità vaghe o non scalabili restano invariate. Tempi e temperature non vengono moltiplicati.'));
   const area=node('div'),nav=node('div');area.className='chefai-step';nav.className='chefai-nav';
   const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','🔊 Leggi');
   [back,next,read].forEach(button=>{button.className='chefai-action';button.type='button'});
@@ -155,8 +164,14 @@ function startGuide(recipe,servings,startIndex=0){
   back.onclick=()=>{index=Math.max(0,index-1);show()};
   next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
   const speechCache=new Map();
-  let ttsContext=null,ttsSource=null;
-  const stopTTS=()=>{if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}};
+  let ttsContext=null,ttsSource=null,ttsRequestController=null,ttsPlaybackId=0;
+  const stopTTS=()=>{
+    ttsPlaybackId++;
+    if(ttsRequestController){try{ttsRequestController.abort()}catch(_){}ttsRequestController=null}
+    if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}
+    if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}
+    if('speechSynthesis' in window)window.speechSynthesis.cancel();
+  };
   function expandCookingAbbreviations(value){
     return String(value||'')
       .replace(/\\bq\\s*\\.?\\s*b\\.?\\b/gi,'quanto basta')
@@ -181,6 +196,7 @@ function startGuide(recipe,servings,startIndex=0){
   const speakText=async text=>{
     text=expandCookingAbbreviations(text);
     stopTTS();
+    const playbackId=ttsPlaybackId;
     say('Sto preparando la voce…');
     try{
       const AudioContextClass=window.AudioContext||window.webkitAudioContext;
@@ -189,20 +205,23 @@ function startGuide(recipe,servings,startIndex=0){
       const resumePromise=ttsContext.state==='suspended'?ttsContext.resume():Promise.resolve();
       let audioBuffer=speechCache.get(text);
       if(!audioBuffer){
-        const controller=new AbortController();
+        const controller=new AbortController();ttsRequestController=controller;
         const timeout=setTimeout(()=>controller.abort(),40000);
         let response;
         try{response=await fetch('/api/chef-ai/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text}),signal:controller.signal})}
-        finally{clearTimeout(timeout)}
+        finally{clearTimeout(timeout);if(ttsRequestController===controller)ttsRequestController=null}
+        if(playbackId!==ttsPlaybackId)return;
         if(!response.ok){let detail='Servizio vocale non disponibile (HTTP '+response.status+').';try{detail=(await response.json()).detail||detail}catch(_){}throw Error(detail)}
         const bytes=await response.arrayBuffer();if(!bytes.byteLength)throw Error('Audio vuoto');
         audioBuffer=await ttsContext.decodeAudioData(bytes.slice(0));speechCache.set(text,audioBuffer);
       }
       await resumePromise;
+      if(playbackId!==ttsPlaybackId)return;
       if(ttsContext.state!=='running')throw Error('AudioContext non attivo');
       ttsSource=ttsContext.createBufferSource();ttsSource.buffer=audioBuffer;ttsSource.connect(ttsContext.destination);ttsSource.onended=()=>{ttsSource=null};ttsSource.start(0);
       say('Riproduzione della voce naturale in corso.');
     }catch(error){
+      if(playbackId!==ttsPlaybackId)return;
       console.warn('Chef-AI neural TTS:',error);
       try{
         if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale del dispositivo non supportata.');
@@ -222,7 +241,9 @@ function startGuide(recipe,servings,startIndex=0){
     const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>item.name+', '+(item.quantity??'quantità non indicata')+' '+(item.unit||'')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');
     speakText(fullText);
   };
-  nav.append(back,next,read,readAll);
+  const stopRead=node('button','⏹ Interrompi lettura');stopRead.className='chefai-action';stopRead.type='button';
+  stopRead.onclick=()=>{stopTTS();say('Lettura interrotta.');};
+  nav.append(back,next,read,readAll,stopRead);
   const voiceButton=node('button','🎙 Comandi vocali');voiceButton.className='chefai-action';voiceButton.type='button';
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SpeechRecognition){
@@ -231,7 +252,8 @@ function startGuide(recipe,servings,startIndex=0){
       voiceButton.disabled=true;voiceButton.textContent='Ascolto…';
       recognition.onresult=event=>{
         const command=event.results[0][0].transcript.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
-        if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
+        if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();say('Lettura interrotta.')}
+        else if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
         else if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command))next.click();
         else if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
         else if(/\b(stop|pausa|ferma|metti in pausa)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(stop|pausa|ferma)\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
@@ -245,7 +267,7 @@ function startGuide(recipe,servings,startIndex=0){
       recognition.onend=()=>{voiceButton.disabled=false;voiceButton.textContent='🎙 Comandi vocali'};
       recognition.start();
     };
-    nav.append(voiceButton,node('p','Comandi: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer (azzera), leggi ricetta, ripeti.'));
+    nav.append(voiceButton,node('p','Comandi: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, leggi ricetta, ripeti, interrompi lettura.'));
   }
   const askBox=node('section');askBox.className='chefai-step';
   askBox.append(node('h3','Hai una domanda su questo passaggio?'));
