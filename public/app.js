@@ -301,29 +301,40 @@ async function loadDailyRecipe() {
       { label: "Dolce", queries: ["crostata alla marmellata", "torta di mele", "cheesecake al limone", "tiramisù"] }
     ];
     tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
-    const choices = tryCategories.map((category, index) => ({
-      ...category,
-      query: category.queries[((dayNumber + index * 7) % category.queries.length + category.queries.length) % category.queries.length]
-    }));
-    const found = await Promise.all(choices.map((category, index) =>
-      fetchSuggestion(category.query, dayNumber, index + 1, dailySites)
-    ));
     const seen = new Set();
-    const suggestions = choices.map((category, index) => {
-      const item = found[index];
-      if (!item) return { category: category.label, item: null };
-      const urlKey = String(item.url).replace(/#.*$/, "").toLowerCase();
-      const titleKey = String(item.title || "").trim().toLocaleLowerCase("it");
-      if (seen.has(urlKey) || seen.has(titleKey)) return { category: category.label, item: null };
-      seen.add(urlKey);
-      seen.add(titleKey);
-      return { category: category.label, item };
-    });
-    tryGrid.innerHTML = suggestions.map((entry, index) => entry.item
-      ? renderSuggestionCard(entry.item, index, "try-recipe-card", entry.category)
-      : '<article class="result-card try-recipe-card suggestion-unavailable"><div class="result-placeholder" aria-hidden="true">✳</div><div class="result-body"><span class="suggestion-category">' + esc(entry.category) + '</span><h3>Ricetta non disponibile</h3><p>Oggi non è stato possibile trovare una proposta per questa portata.</p></div></article>'
-    ).join("");
-    bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
+    const suggestions = [];
+    const pauseBeforeRetry = ms => new Promise(resolve => window.setTimeout(resolve, ms));
+    // Le portate vengono cercate in sequenza: una categoria non viene saltata se la ricerca fallisce.
+    for (let index = 0; index < tryCategories.length; index++) {
+      const category = tryCategories[index];
+      let item = null;
+      let attempt = 0;
+      while (!item) {
+        const queryIndex = (dayNumber + index * 7 + attempt) % category.queries.length;
+        const query = category.queries[queryIndex];
+        tryGrid.innerHTML = '<div class="empty-state">Sto cercando ' + esc(category.label.toLocaleLowerCase("it")) + '… tentativo ' + (attempt + 1) + '. Non passerò alla portata successiva finché non avrò trovato una ricetta.</div>';
+        const candidate = await fetchSuggestion(query, dayNumber + attempt, index + 1 + attempt, dailySites);
+        if (candidate && candidate.title && candidate.url) {
+          const urlKey = String(candidate.url).replace(/#.*$/, "").toLowerCase();
+          const titleKey = String(candidate.title || "").trim().toLocaleLowerCase("it");
+          if (!seen.has(urlKey) && !seen.has(titleKey)) {
+            item = candidate;
+            seen.add(urlKey);
+            seen.add(titleKey);
+          }
+        }
+        if (!item) {
+          attempt++;
+          await pauseBeforeRetry(1500);
+        }
+      }
+      suggestions.push({ category: category.label, item });
+      tryGrid.innerHTML = suggestions.map((entry, cardIndex) =>
+        renderSuggestionCard(entry.item, cardIndex, "try-recipe-card", entry.category)
+      ).join("") + '<div class="empty-state">Portata trovata: ' + suggestions.length + ' di ' + tryCategories.length + '. ' +
+        (suggestions.length < tryCategories.length ? 'Ora cerco la prossima…' : 'Menu completo!') + '</div>';
+      bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
+    }
     const count = document.querySelector("#try-recipes-count");
     if (count) count.textContent = "Menu completo · 5 portate";
   }
