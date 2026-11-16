@@ -99,7 +99,7 @@ function startGuide(recipe,servings,startIndex=0){
   back.className='chefai-player-button chefai-player-secondary';next.className='chefai-player-button chefai-player-primary';read.className='chefai-player-button chefai-player-play';
   [back,next,read].forEach(button=>{button.type='button'});
   let index=Math.min(Math.max(0,startIndex),steps.length-1),timerInterval=null,timerRemaining=Number(steps[index].timer_seconds)||0,timerEndsAt=null,timerPaused=false,timerFinished=false,currentAudio=null;
-  let timerAlarmInterval=null,timerAlarmContext=null;
+  let timerAlarmInterval=null,timerAlarmTimeout=null,timerAlarmContext=null;
   const conversation=[];
   const deviceKey='recipe-finder-device-id';
   let deviceId='';
@@ -128,22 +128,35 @@ function startGuide(recipe,servings,startIndex=0){
       };
       const stopTimerAlarm=()=>{
         if(timerAlarmInterval){clearInterval(timerAlarmInterval);timerAlarmInterval=null;}
+        if(timerAlarmTimeout){clearTimeout(timerAlarmTimeout);timerAlarmTimeout=null;}
         stopAlarmButton.hidden=true;
         if('vibrate'in navigator)navigator.vibrate?.(0);
       };
       const soundTimerAlarm=()=>{
         stopTimerAlarm();
         stopAlarmButton.hidden=false;
-        const beep=()=>{
+        const chime=()=>{
           try{
             if(!timerAlarmContext||timerAlarmContext.state!=='running')return;
-            const oscillator=timerAlarmContext.createOscillator(),gain=timerAlarmContext.createGain();
-            oscillator.type='sine';oscillator.frequency.value=880;gain.gain.setValueAtTime(0.0001,timerAlarmContext.currentTime);gain.gain.exponentialRampToValueAtTime(0.22,timerAlarmContext.currentTime+0.025);gain.gain.exponentialRampToValueAtTime(0.0001,timerAlarmContext.currentTime+0.38);
-            oscillator.connect(gain);gain.connect(timerAlarmContext.destination);oscillator.start();oscillator.stop(timerAlarmContext.currentTime+0.4);
+            const now=timerAlarmContext.currentTime;
+            [[659.25,0],[783.99,0.24]].forEach(([frequency,offset])=>{
+              const oscillator=timerAlarmContext.createOscillator(),gain=timerAlarmContext.createGain();
+              oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,now+offset);
+              gain.gain.setValueAtTime(0.0001,now+offset);
+              gain.gain.exponentialRampToValueAtTime(0.075,now+offset+0.035);
+              gain.gain.exponentialRampToValueAtTime(0.0001,now+offset+0.48);
+              oscillator.connect(gain);gain.connect(timerAlarmContext.destination);
+              oscillator.start(now+offset);oscillator.stop(now+offset+0.5);
+            });
           }catch(error){console.warn('Chef-AI timer alarm:',error)}
         };
-        beep();timerAlarmInterval=setInterval(beep,900);
-        if('vibrate'in navigator)navigator.vibrate?.([300,150,300,150,500]);
+        chime();
+        timerAlarmInterval=setInterval(chime,3000);
+        timerAlarmTimeout=setTimeout(()=>{
+          stopTimerAlarm();
+          say('Allarme terminato automaticamente dopo due minuti.');
+        },120000);
+        if('vibrate'in navigator)navigator.vibrate?.([180,120,180]);
       };
       const finishTimer=()=>{
         if(timerInterval)clearInterval(timerInterval);
@@ -201,22 +214,25 @@ function startGuide(recipe,servings,startIndex=0){
   };
   function expandCookingAbbreviations(value){
     return String(value||'')
-      .replace(/\\bq\\s*\\.?\\s*b\\.?\\b/gi,'quanto basta')
-      .replace(/\\bq\\.?\\s*b\\.?/gi,'quanto basta')
-      .replace(/\\bpz\\.?\\b/gi,'porzioni')
-      .replace(/\\bporz\\.?\\b/gi,'porzioni')
-      .replace(/\\bgr\\.?\\b/gi,'grammi')
-      .replace(/(\\d)\\s*g\\b/gi,'$1 grammi')
-      .replace(/\\bkg\\.?\\b/gi,'chilogrammi')
-      .replace(/\\bmg\\.?\\b/gi,'milligrammi')
-      .replace(/\\bml\\.?\\b/gi,'millilitri')
-      .replace(/\\bcl\\.?\\b/gi,'centilitri')
-      .replace(/(\\d)\\s*l\\b/gi,'$1 litri')
-      .replace(/\\bcucch(?:\\.\\s*|\\s*)no\\.?\\b/gi,'cucchiaino')
-      .replace(/\\bcucch(?:\\.\\s*|\\s*)\\.?\\b/gi,'cucchiaio')
-      .replace(/\\bmin\\.?\\b/gi,'minuti')
-      .replace(/\\bsec\\.?\\b/gi,'secondi')
-      .replace(/\\bore\\.?\\b/gi,'ore')
+      .replace(/\bq\s*\.?\s*b\.?\b/gi,'quanto basta')
+      .replace(/\bq\.?\s*b\.?/gi,'quanto basta')
+      .replace(/\bpz\.?\b/gi,'porzioni')
+      .replace(/\bporz\.?\b/gi,'porzioni')
+      .replace(/\bgr\.?\b/gi,'grammi')
+      .replace(/(\d)\s*g\b/gi,'$1 grammi')
+      .replace(/\bkg\.?\b/gi,'chilogrammi')
+      .replace(/\bmg\.?\b/gi,'milligrammi')
+      .replace(/\bml\.?\b/gi,'millilitri')
+      .replace(/\bcl\.?\b/gi,'centilitri')
+      .replace(/(\d)\s*l\b/gi,'$1 litri')
+      .replace(/\bcucch(?:\.\s*|\s*)no\.?\b/gi,'cucchiaino')
+      .replace(/\bcucch(?:\.\s*|\s*)\.?\b/gi,'cucchiaio')
+      .replace(/\bmin\.?\b/gi,'minuti')
+      .replace(/\bsec\.?\b/gi,'secondi')
+      .replace(/\bore\.?\b/gi,'ore')
+      .replace(/\bquantit[aà]\s+non\s+(?:stabilita|specificata|indicata)\b/gi,'')
+      .replace(/\bquantit[aà]\s+da\s+definire\b/gi,'')
+      .replace(/\b(?:dose|quantit[aà])\s+non\s+definita\b/gi,'')
       .replace(/°\\s*C\\b/gi,'gradi Celsius')
       .replace(/\\b(?:forno\\s*)?(ventilato)\\b/gi,'ventilato');
   }
@@ -265,7 +281,7 @@ function startGuide(recipe,servings,startIndex=0){
   read.onclick=()=>speakText(steps[index].instruction);
   const readAll=node('button','▤ Leggi ricetta');readAll.className='chefai-player-button chefai-player-secondary';readAll.type='button';
   readAll.onclick=()=>{
-    const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>item.name+', '+(item.quantity??'quantità non indicata')+' '+(item.unit||'')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');
+    const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>[item.name,item.quantity!==null&&item.quantity!==undefined?item.quantity:null,item.unit||null].filter(value=>value!==null&&value!=='').join(', ')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');
     speakText(fullText);
   };
   const stopRead=node('button','■ Interrompi');stopRead.className='chefai-player-button chefai-player-stop';stopRead.type='button';
