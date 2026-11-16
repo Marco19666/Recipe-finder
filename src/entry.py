@@ -1232,13 +1232,12 @@ async def search(
             follow_redirects=True,
             headers={"User-Agent": RECIPE_USER_AGENT, "Accept": "text/html,application/json"},
         ) as client:
-            # Interroga le fonti in sequenza, rispettando l'ordine scelto dall'utente.
-            batches = []
-            for site in selected_sites:
-                try:
-                    batches.append(await _search_one_site(client, site, q))
-                except Exception:
-                    batches.append([])
+            # Interroga le fonti in parallelo: le chiamate sequenziali potevano
+            # superare il tempo massimo della richiesta quando più siti rallentavano.
+            batches = await asyncio.gather(
+                *(_search_one_site(client, site, q) for site in selected_sites),
+                return_exceptions=True,
+            )
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Non riesco a contattare i siti di ricette. Riprova più tardi.") from exc
 
