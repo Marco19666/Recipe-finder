@@ -187,15 +187,15 @@ function startGuide(recipe,servings,startIndex=0){
       const recognition=new SpeechRecognition();recognition.lang='it-IT';recognition.interimResults=false;recognition.maxAlternatives=1;
       voiceButton.disabled=true;voiceButton.textContent='Ascolto…';
       recognition.onresult=event=>{
-        const command=event.results[0][0].transcript.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\\s+/g,' ').trim();
-        if(/\\b(indietro|precedente|passaggio precedente)\\b/.test(command))back.click();
-        else if(/\\b(avanti|successivo|prossimo|passaggio successivo)\\b/.test(command))next.click();
-        else if(/\\b(spegni|azzera|resetta|annulla)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(spegni|azzera|resetta|annulla)\\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
-        else if(/\\b(stop|pausa|ferma|metti in pausa)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(stop|pausa|ferma)\\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
-        else if(/\\b(riprendi|continua|riavvia)\\b.{0,24}\\btimer\\b|\\btimer\\b.{0,24}\\b(riprendi|continua)\\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
-        else if(/\\b(avvia|inizia|attiva|fai partire|parti con)\\b.{0,24}\\btimer\\b|\\b(timer)\\b.{0,24}\\b(avvia|inizia|attiva)\\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
-        else if(/\\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l'intera ricetta)\\b/.test(command))readAll.click();
-        else if(/\\b(ripeti|rileggi)\\b/.test(command))read.click();
+        const command=event.results[0][0].transcript.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
+        if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
+        else if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command))next.click();
+        else if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
+        else if(/\b(stop|pausa|ferma|metti in pausa)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(stop|pausa|ferma)\b/.test(command)){if(area._chefTimer)area._chefTimer.pause();else say('Questo passaggio non prevede un timer.')}
+        else if(/\b(riprendi|continua|riavvia)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(riprendi|continua)\b/.test(command)){if(area._chefTimer)area._chefTimer.resume();else say('Questo passaggio non prevede un timer.')}
+        else if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\b(timer)\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
+        else if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l'intera ricetta)\b/.test(command))readAll.click();
+        else if(/\b(ripeti|rileggi)\b/.test(command))read.click();
         else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, leggi ricetta.');
       };
       recognition.onerror=()=>say('Non sono riuscito a riconoscere il comando vocale.');
