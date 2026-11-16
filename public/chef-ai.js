@@ -98,11 +98,13 @@ function startGuide(recipe,servings,startIndex=0){
   const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','🔊 Leggi');
   [back,next,read].forEach(button=>{button.className='chefai-action';button.type='button'});
   let index=Math.min(Math.max(0,startIndex),steps.length-1),timerInterval=null,timerRemaining=Number(steps[index].timer_seconds)||0,timerEndsAt=null,timerPaused=false,timerFinished=false,currentAudio=null;
+  let timerAlarmInterval=null,timerAlarmContext=null;
   const conversation=[];
   const deviceKey='recipe-finder-device-id';
   let deviceId='';
   try{deviceId=localStorage.getItem(deviceKey)||'';if(!/^[A-Za-z0-9-]{16,100}$/.test(deviceId)){deviceId=(crypto.randomUUID?crypto.randomUUID():('chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)));localStorage.setItem(deviceKey,deviceId)}}catch(_){deviceId='chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)}
   function show(){
+    if(area._chefTimer?.stopAlarm)area._chefTimer.stopAlarm();
     if(timerInterval){clearInterval(timerInterval);timerInterval=null}
     const step=steps[index];timerRemaining=Number(step.timer_seconds)||0;timerEndsAt=null;timerPaused=false;timerFinished=false;area._chefTimer=null;area.replaceChildren(node('small','PASSAGGIO '+(index+1)+' DI '+steps.length),node('p',step.instruction));
     if(step.temperature_c!==null&&step.temperature_c!==undefined)area.append(node('p','Temperatura: '+step.temperature_c+' °C'+(step.cooking_mode?' · '+step.cooking_mode:'')));
@@ -110,8 +112,9 @@ function startGuide(recipe,servings,startIndex=0){
       const timerLabel=node('p','Timer: '+Math.ceil(step.timer_seconds/60)+' minuti');
       const timerDisplay=node('p');timerDisplay.setAttribute('aria-live','polite');
       const timerControls=node('div');
-      const startTimerButton=node('button','Avvia timer'),pauseTimerButton=node('button','Pausa timer'),resumeTimerButton=node('button','Riprendi timer'),resetTimerButton=node('button','Spegni timer');
-      [startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton].forEach(button=>{button.className='chefai-action';button.type='button'});
+      const startTimerButton=node('button','Avvia timer'),pauseTimerButton=node('button','Pausa timer'),resumeTimerButton=node('button','Riprendi timer'),resetTimerButton=node('button','Spegni timer'),stopAlarmButton=node('button','🔕 Ferma allarme');
+      [startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton,stopAlarmButton].forEach(button=>{button.className='chefai-action';button.type='button'});
+      stopAlarmButton.hidden=true;
       const formatTime=value=>Math.floor(Math.max(0,value)/60)+':'+String(Math.max(0,value)%60).padStart(2,'0');
       const updateTimerUI=()=>{
         timerDisplay.textContent=timerFinished?'⏱ Tempo terminato':timerRemaining<=0&&!timerInterval?'⏱ '+(timerPaused?'In pausa · 0:00':'Pronto · '+formatTime(Number(step.timer_seconds))):'⏱ '+formatTime(timerRemaining)+(timerPaused?' · in pausa':'');
@@ -120,12 +123,30 @@ function startGuide(recipe,servings,startIndex=0){
         resumeTimerButton.disabled=!timerPaused;
         resetTimerButton.disabled=(!timerInterval&&!timerPaused&&!timerFinished&&timerRemaining===(Number(step.timer_seconds)||0));
       };
+      const stopTimerAlarm=()=>{
+        if(timerAlarmInterval){clearInterval(timerAlarmInterval);timerAlarmInterval=null;}
+        stopAlarmButton.hidden=true;
+        if('vibrate'in navigator)navigator.vibrate?.(0);
+      };
+      const soundTimerAlarm=()=>{
+        stopTimerAlarm();
+        stopAlarmButton.hidden=false;
+        const beep=()=>{
+          try{
+            if(!timerAlarmContext||timerAlarmContext.state!=='running')return;
+            const oscillator=timerAlarmContext.createOscillator(),gain=timerAlarmContext.createGain();
+            oscillator.type='sine';oscillator.frequency.value=880;gain.gain.setValueAtTime(0.0001,timerAlarmContext.currentTime);gain.gain.exponentialRampToValueAtTime(0.22,timerAlarmContext.currentTime+0.025);gain.gain.exponentialRampToValueAtTime(0.0001,timerAlarmContext.currentTime+0.38);
+            oscillator.connect(gain);gain.connect(timerAlarmContext.destination);oscillator.start();oscillator.stop(timerAlarmContext.currentTime+0.4);
+          }catch(error){console.warn('Chef-AI timer alarm:',error)}
+        };
+        beep();timerAlarmInterval=setInterval(beep,900);
+        if('vibrate'in navigator)navigator.vibrate?.([300,150,300,150,500]);
+      };
       const finishTimer=()=>{
         if(timerInterval)clearInterval(timerInterval);
         timerInterval=null;timerRemaining=0;timerEndsAt=null;timerPaused=false;timerFinished=true;
-        timerDisplay.textContent='⏱ Tempo terminato';
-        updateTimerUI();
-        if('vibrate'in navigator)navigator.vibrate?.([200,100,200]);
+        timerDisplay.textContent='⏰ Tempo terminato: allarme attivo';
+        updateTimerUI();soundTimerAlarm();say('Timer scaduto: allarme sonoro attivo. Premi “Ferma allarme” per interromperlo.');
       };
       const tick=()=>{
         timerRemaining=Math.max(0,Math.ceil((timerEndsAt-Date.now())/1000));
@@ -137,6 +158,8 @@ function startGuide(recipe,servings,startIndex=0){
         if(timerRemaining<=0)timerRemaining=Number(step.timer_seconds)||0;
         if(!timerRemaining){say('Questo passaggio non prevede un timer.');return}
         timerPaused=false;timerFinished=false;timerEndsAt=Date.now()+timerRemaining*1000;
+        const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+        if(AudioContextClass){try{if(!timerAlarmContext)timerAlarmContext=new AudioContextClass();if(timerAlarmContext.state==='suspended')timerAlarmContext.resume()}catch(_){}}
         timerInterval=setInterval(tick,250);tick();
       };
       const pauseTimer=()=>{
@@ -149,14 +172,15 @@ function startGuide(recipe,servings,startIndex=0){
         timerPaused=false;startTimer();
       };
       const resetTimer=()=>{
+        stopTimerAlarm();
         if(timerInterval)clearInterval(timerInterval);
         timerInterval=null;timerEndsAt=null;timerRemaining=Number(step.timer_seconds)||0;timerPaused=false;timerFinished=false;updateTimerUI();
       };
-      startTimerButton.onclick=startTimer;pauseTimerButton.onclick=pauseTimer;resumeTimerButton.onclick=resumeTimer;resetTimerButton.onclick=resetTimer;
-      timerControls.append(startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton);
+      startTimerButton.onclick=startTimer;pauseTimerButton.onclick=pauseTimer;resumeTimerButton.onclick=resumeTimer;resetTimerButton.onclick=resetTimer;stopAlarmButton.onclick=()=>{stopTimerAlarm();say('Allarme del timer interrotto.');};
+      timerControls.append(startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton,stopAlarmButton);
       timerControls.style.display='flex';timerControls.style.flexWrap='wrap';timerControls.style.gap='8px';
       area.append(timerLabel,timerDisplay,timerControls);updateTimerUI();
-      area._chefTimer={start:startTimer,pause:pauseTimer,resume:resumeTimer,reset:resetTimer};
+      area._chefTimer={start:startTimer,pause:pauseTimer,resume:resumeTimer,reset:resetTimer,stopAlarm:stopTimerAlarm};
     }
     back.disabled=index===0;next.textContent=index===steps.length-1?'Termina':'Avanti →';
     saveSession(recipe,servings,index);
@@ -253,6 +277,7 @@ function startGuide(recipe,servings,startIndex=0){
       recognition.onresult=event=>{
         const command=event.results[0][0].transcript.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();
         if(/\b(stop lettura|interrompi lettura|ferma lettura|basta leggere|zitto)\b/.test(command)){stopTTS();say('Lettura interrotta.')}
+        else if(/\b(stop allarme|ferma allarme|spegni allarme|interrompi allarme)\b/.test(command)){if(area._chefTimer)area._chefTimer.stopAlarm();say('Allarme del timer interrotto.')}
         else if(/\b(indietro|precedente|passaggio precedente)\b/.test(command))back.click();
         else if(/\b(avanti|successivo|prossimo|passaggio successivo)\b/.test(command))next.click();
         else if(/\b(spegni|azzera|resetta|annulla)\b.{0,24}\btimer\b|\btimer\b.{0,24}\b(spegni|azzera|resetta|annulla)\b/.test(command)){if(area._chefTimer)area._chefTimer.reset();else say('Questo passaggio non prevede un timer.')}
@@ -261,13 +286,13 @@ function startGuide(recipe,servings,startIndex=0){
         else if(/\b(avvia|inizia|attiva|fai partire|parti con)\b.{0,24}\btimer\b|\b(timer)\b.{0,24}\b(avvia|inizia|attiva)\b/.test(command)){if(area._chefTimer)area._chefTimer.start();else say('Questo passaggio non prevede un timer.')}
         else if(/\b(leggi ricetta|leggi tutto|tutta la ricetta|leggimi la ricetta|leggi l'intera ricetta)\b/.test(command))readAll.click();
         else if(/\b(ripeti|rileggi)\b/.test(command))read.click();
-        else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, leggi ricetta.');
+        else say('Comando non riconosciuto. Prova: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta.');
       };
       recognition.onerror=()=>say('Non sono riuscito a riconoscere il comando vocale.');
       recognition.onend=()=>{voiceButton.disabled=false;voiceButton.textContent='🎙 Comandi vocali'};
       recognition.start();
     };
-    nav.append(voiceButton,node('p','Comandi: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, leggi ricetta, ripeti, interrompi lettura.'));
+    nav.append(voiceButton,node('p','Comandi: avanti, indietro, avvia timer, pausa timer, riprendi timer, spegni timer, stop allarme, leggi ricetta, ripeti, interrompi lettura.'));
   }
   const askBox=node('section');askBox.className='chefai-step';
   askBox.append(node('h3','Hai una domanda su questo passaggio?'));
