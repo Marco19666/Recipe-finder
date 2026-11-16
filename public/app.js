@@ -25,6 +25,12 @@ function updateWakeButton() {
   wakeToggle.textContent = wakeEnabled ? "✓ Schermo sempre acceso" : "♧ Schermo sempre acceso";
   wakeToggle.setAttribute("aria-pressed", String(wakeEnabled));
   wakeToggle.classList.toggle("is-active", wakeEnabled);
+  // Colore fisso: nessun altro pulsante o cambio tema deve modificarlo.
+  wakeToggle.style.setProperty("background-color", "#dcebd5", "important");
+  wakeToggle.style.setProperty("background", "#dcebd5", "important");
+  wakeToggle.style.setProperty("border-color", "#b8d1ae", "important");
+  wakeToggle.style.setProperty("color", "#294b2d", "important");
+  wakeToggle.style.setProperty("-webkit-text-fill-color", "#294b2d", "important");
 }
 async function requestWakeLock() {
   if (!wakeEnabled || document.visibilityState !== "visible" || !("wakeLock" in navigator)) return;
