@@ -265,11 +265,26 @@ async function loadDailyRecipe() {
   const dailyQueries = ["pasta al forno","pollo al limone","risotto ai funghi","parmigiana di melanzane","polpette al sugo","torta di mele","lasagne","pasta alla carbonara","frittata di verdure","tiramisù","salmone al forno","gnocchi al pomodoro","crostata","spezzatino","pasta al pesto"];
   const now = new Date();
   const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const dailyDate = [now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");
+  const dailyStorageKey = "recipe-finder-daily-recipe-v1";
   const dailySites = ["misya.info","cookist.it","cucchiaio.it","fattoincasadabenedetta.it","ricettedellanonna.net","tavolartegusto.it"];
   if (dailyGrid) {
     const query = dailyQueries[((dayNumber % dailyQueries.length) + dailyQueries.length) % dailyQueries.length];
     dailyGrid.innerHTML = '<div class="empty-state">Sto scegliendo la ricetta di oggi...</div>';
-    const item = await fetchSuggestion(query, dayNumber, 0, dailySites);
+    let item = null;
+    // La ricetta scelta viene congelata per l'intera giornata, con il titolo completo e tutti i dati originali.
+    try {
+      const saved = JSON.parse(localStorage.getItem(dailyStorageKey) || "null");
+      if (saved && saved.date === dailyDate && saved.item && typeof saved.item.title === "string" && saved.item.title.trim() && typeof saved.item.url === "string" && saved.item.url.trim()) {
+        item = saved.item;
+      }
+    } catch {}
+    if (!item) {
+      item = await fetchSuggestion(query, dayNumber, 0, dailySites);
+      if (item && typeof item.title === "string" && typeof item.url === "string") {
+        try { localStorage.setItem(dailyStorageKey, JSON.stringify({ date: dailyDate, item })); } catch {}
+      }
+    }
     if (item) {
       dailyGrid.innerHTML = renderSuggestionCard(item, 0, "daily-recipe-card");
       bindSuggestionButtons(dailyGrid, [item]);
