@@ -155,23 +155,26 @@ function startGuide(recipe,servings,startIndex=0){
   back.onclick=()=>{index=Math.max(0,index-1);show()};
   next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
   const speechCache=new Map();
+  let ttsContext=null,ttsSource=null;
+  const stopTTS=()=>{if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}};
   const speakText=async text=>{
-    if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}
+    stopTTS();
     try{
-      let audioUrl=speechCache.get(text);
-      if(!audioUrl){
+      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+      if(!AudioContextClass)throw Error('Questo browser non supporta la riproduzione audio avanzata.');
+      if(!ttsContext)ttsContext=new AudioContextClass();
+      const resumePromise=ttsContext.state==='suspended'?ttsContext.resume():Promise.resolve();
+      let audioBuffer=speechCache.get(text);
+      if(!audioBuffer){
         const response=await fetch('/api/chef-ai/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-        const data=await response.json();
-        if(!response.ok||!data.audio_url)throw Error(data.detail||'Voce naturale non disponibile.');
-        audioUrl=data.audio_url;speechCache.set(text,audioUrl);
+        if(!response.ok){let detail='Servizio vocale non disponibile.';try{detail=(await response.json()).detail||detail}catch(_){}throw Error(detail)}
+        const bytes=await response.arrayBuffer();if(!bytes.byteLength)throw Error('Il servizio vocale ha restituito un audio vuoto.');
+        audioBuffer=await ttsContext.decodeAudioData(bytes.slice(0));speechCache.set(text,audioBuffer);
       }
-      currentAudio=new Audio(audioUrl);
-      currentAudio.onended=()=>{currentAudio=null};
-      await currentAudio.play();
-    }catch(error){
-      console.warn('Chef-AI neural TTS:',error);
-      say('La voce naturale non è momentaneamente disponibile. Riprova tra poco: non verrà sostituita da una voce robotica del dispositivo.');
-    }
+      await resumePromise;
+      if(ttsContext.state!=='running')throw Error('Il browser ha bloccato l’audio. Tocca nuovamente Leggi.');
+      ttsSource=ttsContext.createBufferSource();ttsSource.buffer=audioBuffer;ttsSource.connect(ttsContext.destination);ttsSource.onended=()=>{ttsSource=null};ttsSource.start(0);
+    }catch(error){console.warn('Chef-AI neural TTS:',error);say('Non riesco ad avviare la voce naturale: '+(error.message||'errore audio')+'. Tocca di nuovo “Leggi” e verifica che il dispositivo non sia in modalità silenziosa.')}
   };
   read.onclick=()=>speakText(steps[index].instruction);
   const readAll=node('button','📖 Leggi ricetta');readAll.className='chefai-action';readAll.type='button';
