@@ -95,8 +95,9 @@ function startGuide(recipe,servings,startIndex=0){
   result.replaceChildren(node('h2','Chef Guidato'));
   result.append(node('p','Porzioni: '+servings+'. Le quantità numeriche lineari sono state ricalcolate in base alle porzioni; quantità vaghe o non scalabili restano invariate. Tempi e temperature non vengono moltiplicati.'));
   const area=node('div'),nav=node('div');area.className='chefai-step';nav.className='chefai-nav';
-  const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','🔊 Leggi');
-  [back,next,read].forEach(button=>{button.className='chefai-action';button.type='button'});
+  const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','▶ Leggi passaggio');
+  back.className='chefai-player-button chefai-player-secondary';next.className='chefai-player-button chefai-player-primary';read.className='chefai-player-button chefai-player-play';
+  [back,next,read].forEach(button=>{button.type='button'});
   let index=Math.min(Math.max(0,startIndex),steps.length-1),timerInterval=null,timerRemaining=Number(steps[index].timer_seconds)||0,timerEndsAt=null,timerPaused=false,timerFinished=false,currentAudio=null;
   let timerAlarmInterval=null,timerAlarmContext=null;
   const conversation=[];
@@ -109,11 +110,13 @@ function startGuide(recipe,servings,startIndex=0){
     const step=steps[index];timerRemaining=Number(step.timer_seconds)||0;timerEndsAt=null;timerPaused=false;timerFinished=false;area._chefTimer=null;area.replaceChildren(node('small','PASSAGGIO '+(index+1)+' DI '+steps.length),node('p',step.instruction));
     if(step.temperature_c!==null&&step.temperature_c!==undefined)area.append(node('p','Temperatura: '+step.temperature_c+' °C'+(step.cooking_mode?' · '+step.cooking_mode:'')));
     if(step.timer_seconds){
-      const timerLabel=node('p','Timer: '+Math.ceil(step.timer_seconds/60)+' minuti');
-      const timerDisplay=node('p');timerDisplay.setAttribute('aria-live','polite');
-      const timerControls=node('div');
-      const startTimerButton=node('button','Avvia timer'),pauseTimerButton=node('button','Pausa timer'),resumeTimerButton=node('button','Riprendi timer'),resetTimerButton=node('button','Spegni timer'),stopAlarmButton=node('button','🔕 Ferma allarme');
-      [startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton,stopAlarmButton].forEach(button=>{button.className='chefai-action';button.type='button'});
+      const timerPanel=node('section');timerPanel.className='chefai-timer-panel';
+      const timerLabel=node('p','TIMER · '+Math.ceil(step.timer_seconds/60)+' MIN');timerLabel.className='chefai-timer-label';
+      const timerDisplay=node('p');timerDisplay.className='chefai-timer-display';timerDisplay.setAttribute('aria-live','polite');
+      const timerControls=node('div');timerControls.className='chefai-timer-controls';
+      const startTimerButton=node('button','▶ Avvia'),pauseTimerButton=node('button','Ⅱ Pausa'),resumeTimerButton=node('button','▶ Riprendi'),resetTimerButton=node('button','↺ Azzera'),stopAlarmButton=node('button','🔕 Ferma allarme');
+      [startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton].forEach(button=>{button.className='chefai-player-button chefai-player-secondary';button.type='button'});
+      stopAlarmButton.className='chefai-player-button chefai-player-alarm';stopAlarmButton.type='button';
       stopAlarmButton.hidden=true;
       const formatTime=value=>Math.floor(Math.max(0,value)/60)+':'+String(Math.max(0,value)%60).padStart(2,'0');
       const updateTimerUI=()=>{
@@ -179,7 +182,7 @@ function startGuide(recipe,servings,startIndex=0){
       startTimerButton.onclick=startTimer;pauseTimerButton.onclick=pauseTimer;resumeTimerButton.onclick=resumeTimer;resetTimerButton.onclick=resetTimer;stopAlarmButton.onclick=()=>{stopTimerAlarm();say('Allarme del timer interrotto.');};
       timerControls.append(startTimerButton,pauseTimerButton,resumeTimerButton,resetTimerButton,stopAlarmButton);
       timerControls.style.display='flex';timerControls.style.flexWrap='wrap';timerControls.style.gap='8px';
-      area.append(timerLabel,timerDisplay,timerControls);updateTimerUI();
+      timerPanel.append(timerLabel,timerDisplay,timerControls);area.append(timerPanel);updateTimerUI();
       area._chefTimer={start:startTimer,pause:pauseTimer,resume:resumeTimer,reset:resetTimer,stopAlarm:stopTimerAlarm};
     }
     back.disabled=index===0;next.textContent=index===steps.length-1?'Termina':'Avanti →';
@@ -260,15 +263,18 @@ function startGuide(recipe,servings,startIndex=0){
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
-  const readAll=node('button','📖 Leggi ricetta');readAll.className='chefai-action';readAll.type='button';
+  const readAll=node('button','▤ Leggi ricetta');readAll.className='chefai-player-button chefai-player-secondary';readAll.type='button';
   readAll.onclick=()=>{
     const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>item.name+', '+(item.quantity??'quantità non indicata')+' '+(item.unit||'')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');
     speakText(fullText);
   };
-  const stopRead=node('button','⏹ Interrompi lettura');stopRead.className='chefai-action';stopRead.type='button';
+  const stopRead=node('button','■ Interrompi');stopRead.className='chefai-player-button chefai-player-stop';stopRead.type='button';
   stopRead.onclick=()=>{stopTTS();say('Lettura interrotta.');};
-  nav.append(back,next,read,readAll,stopRead);
-  const voiceButton=node('button','🎙 Comandi vocali');voiceButton.className='chefai-action';voiceButton.type='button';
+  nav.classList.add('chefai-player');
+  const navigationControls=node('div');navigationControls.className='chefai-player-navigation';navigationControls.append(back,next);
+  const audioControls=node('div');audioControls.className='chefai-player-audio';audioControls.append(read,readAll,stopRead);
+  nav.append(navigationControls,audioControls);
+  const voiceButton=node('button','🎙 Comandi vocali');voiceButton.className='chefai-player-button chefai-player-voice';voiceButton.type='button';
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SpeechRecognition){
     voiceButton.onclick=()=>{
