@@ -271,7 +271,12 @@ $('#search-btn').onclick=async()=>{
   const query=$('#search-q').value.trim();if(query.length<2){say('Scrivi almeno due caratteri.');return}
   say('Cerco ricette…');
   try{
-    const response=await fetch('/api/search?q='+encodeURIComponent(query));const data=await response.json();
+    const response=await fetch('/api/search?q='+encodeURIComponent(query));
+    const body=await response.text();
+    let data={};
+    try{data=body?JSON.parse(body):{}}catch(_){
+      throw Error('Il servizio di ricerca ha restituito una risposta non valida. Riprova tra poco.');
+    }
     if(!response.ok)throw Error(data.detail||'Ricerca non riuscita.');
     const host=$('#search-results');host.replaceChildren();const items=data.results||[];
     if(!items.length){host.append(node('p','Nessuna ricetta trovata.'));return}
