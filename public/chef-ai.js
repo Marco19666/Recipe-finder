@@ -230,7 +230,8 @@ $('#recipe-file').onchange=async event=>{
       const parser=await loadDocumentParser();
       const config={newlineDelimiter:'\\n\\n',extractAttachments:false,ocr:false,outputErrorToConsole:true};
       if(extension==='pdf')config.pdfWorkerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.530/build/pdf.worker.min.mjs';
-      const parsed=await parser.parseOffice(file,config);
+      const fileBuffer=await file.arrayBuffer();
+      const parsed=await parser.parseOffice(fileBuffer,config);
       if(parsed&&typeof parsed.toText==='function')extracted=parsed.toText();
       else if(parsed&&Array.isArray(parsed.content)){
         const collect=nodes=>(nodes||[]).map(n=>[n.text||'',collect(n.children)].filter(Boolean).join(' ')).join('\\n');
