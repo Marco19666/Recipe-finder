@@ -300,19 +300,60 @@ async function loadDailyRecipe() {
       { label: "Contorno", queries: ["patate al forno", "verdure gratinate", "zucchine trifolate", "melanzane grigliate"] },
       { label: "Dolce", queries: ["crostata alla marmellata", "torta di mele", "cheesecake al limone", "tiramisù"] }
     ];
-    tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
-    const seen = new Set();
-    const suggestions = [];
+    const tryStorageKey = "recipe-finder-try-menu-v1";
     const pauseBeforeRetry = ms => new Promise(resolve => window.setTimeout(resolve, ms));
-    // Le portate vengono cercate in sequenza: una categoria non viene saltata se la ricerca fallisce.
+    // Conserva il menu completo (e anche le portate già trovate) per tutta la giornata.
+    let savedEntries = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(tryStorageKey) || "null");
+      if (saved && saved.date === dailyDate && Array.isArray(saved.entries)) {
+        savedEntries = saved.entries.filter(entry =>
+          entry && tryCategories.some(category => category.label === entry.category) &&
+          entry.item && typeof entry.item.title === "string" && entry.item.title.trim() &&
+          typeof entry.item.url === "string" && entry.item.url.trim()
+        );
+      }
+    } catch {}
+    const suggestions = tryCategories
+      .map(category => savedEntries.find(entry => entry.category === category.label))
+      .filter(Boolean)
+      .map(entry => ({ category: entry.category, item: entry.item }));
+    const seen = new Set();
+    suggestions.forEach(entry => {
+      seen.add(String(entry.item.url).replace(/#.*$/, "").toLowerCase());
+      seen.add(String(entry.item.title || "").trim().toLocaleLowerCase("it"));
+    });
+    const saveTryMenu = () => {
+      try {
+        localStorage.setItem(tryStorageKey, JSON.stringify({ date: dailyDate, entries: suggestions }));
+      } catch {}
+    };
+    const renderTryMenu = (status = "") => {
+      tryGrid.innerHTML = suggestions.map((entry, cardIndex) =>
+        renderSuggestionCard(entry.item, cardIndex, "try-recipe-card", entry.category)
+      ).join("") + '<div class="empty-state">' +
+        (suggestions.length === tryCategories.length
+          ? "Menu completo! Questo menu resterà uguale per tutta la giornata."
+          : esc(status || ("Portate trovate: " + suggestions.length + " di " + tryCategories.length + "."))) +
+        '</div>';
+      bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
+      const count = document.querySelector("#try-recipes-count");
+      if (count) count.textContent = suggestions.length === tryCategories.length
+        ? "Menu completo · 5 portate"
+        : "Menu in preparazione · " + suggestions.length + "/5";
+    };
+    if (suggestions.length) renderTryMenu("Menu di oggi già memorizzato: riprendo da qui.");
+    else tryGrid.innerHTML = '<div class="empty-state">Sto preparando il menu di oggi: antipasto, primo, secondo, contorno e dolce...</div>';
+    // Le portate già salvate non vengono mai rimescolate al ricaricamento.
     for (let index = 0; index < tryCategories.length; index++) {
       const category = tryCategories[index];
+      if (suggestions.some(entry => entry.category === category.label)) continue;
       let item = null;
       let attempt = 0;
       while (!item) {
         const queryIndex = (dayNumber + index * 7 + attempt) % category.queries.length;
         const query = category.queries[queryIndex];
-        tryGrid.innerHTML = '<div class="empty-state">Sto cercando ' + esc(category.label.toLocaleLowerCase("it")) + '… tentativo ' + (attempt + 1) + '. Non passerò alla portata successiva finché non avrò trovato una ricetta.</div>';
+        renderTryMenu("Sto cercando " + category.label.toLocaleLowerCase("it") + "… tentativo " + (attempt + 1) + ". Non passerò alla portata successiva finché non avrò trovato una ricetta.");
         const candidate = await fetchSuggestion(query, dayNumber + attempt, index + 1 + attempt, dailySites);
         if (candidate && candidate.title && candidate.url) {
           const urlKey = String(candidate.url).replace(/#.*$/, "").toLowerCase();
@@ -329,14 +370,14 @@ async function loadDailyRecipe() {
         }
       }
       suggestions.push({ category: category.label, item });
-      tryGrid.innerHTML = suggestions.map((entry, cardIndex) =>
-        renderSuggestionCard(entry.item, cardIndex, "try-recipe-card", entry.category)
-      ).join("") + '<div class="empty-state">Portata trovata: ' + suggestions.length + ' di ' + tryCategories.length + '. ' +
-        (suggestions.length < tryCategories.length ? 'Ora cerco la prossima…' : 'Menu completo!') + '</div>';
-      bindSuggestionButtons(tryGrid, suggestions.map(entry => entry.item));
+      // Salva subito ogni portata: anche un ricaricamento durante la ricerca
+      // riprende lo stesso menu senza sostituire ciò che è già stato trovato.
+      saveTryMenu();
+      renderTryMenu("Portata trovata: " + suggestions.length + " di " + tryCategories.length + ". " +
+        (suggestions.length < tryCategories.length ? "Ora cerco la prossima…" : "Menu completo!"));
     }
-    const count = document.querySelector("#try-recipes-count");
-    if (count) count.textContent = "Menu completo · 5 portate";
+    saveTryMenu();
+    renderTryMenu();
   }
 }
 function notify(message, duration = 3200) {
