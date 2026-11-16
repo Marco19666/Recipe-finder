@@ -95,6 +95,38 @@ function startGuide(recipe,servings,startIndex=0){
   result.replaceChildren(node('h2','Chef Guidato'));
   result.append(node('p','Porzioni: '+servings+'. Le quantità numeriche lineari sono state ricalcolate in base alle porzioni; quantità vaghe o non scalabili restano invariate. Tempi e temperature non vengono moltiplicati.'));
   const area=node('div'),nav=node('div');area.className='chefai-step';nav.className='chefai-nav';
+  let screenWakeLock=null,screenWakeVisibilityHandler=null;
+  const screenWakeStatus=node('p');
+  screenWakeStatus.className='chefai-wake-status';
+  screenWakeStatus.setAttribute('aria-live','polite');
+  const releaseScreenWakeLock=async()=>{
+    if(screenWakeLock){try{await screenWakeLock.release()}catch(_){}screenWakeLock=null}
+  };
+  const requestScreenWakeLock=async()=>{
+    if(!('wakeLock'in navigator)){
+      screenWakeStatus.textContent='Schermo sempre acceso non supportato da questo browser: mantieni aperta la pagina e disattiva temporaneamente il blocco schermo.';
+      return;
+    }
+    if(document.visibilityState!=='visible')return;
+    try{
+      if(screenWakeLock&&!screenWakeLock.released)return;
+      screenWakeLock=await navigator.wakeLock.request('screen');
+      screenWakeStatus.textContent='☀️ Schermo sempre acceso durante Chef Guidato.';
+      screenWakeLock.addEventListener('release',()=>{
+        screenWakeLock=null;
+        if(document.visibilityState==='visible')screenWakeStatus.textContent='Schermo non bloccato dal Chef-AI. Riprovo ad attivarlo…';
+      },{once:true});
+    }catch(error){
+      screenWakeStatus.textContent='Non posso impedire lo spegnimento dello schermo: controlla i permessi e le impostazioni di risparmio energetico.';
+    }
+  };
+  screenWakeVisibilityHandler=()=>{
+    if(document.visibilityState==='visible')requestScreenWakeLock();
+    else releaseScreenWakeLock();
+  };
+  document.addEventListener('visibilitychange',screenWakeVisibilityHandler);
+  requestScreenWakeLock();
+
   const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','▶ Leggi passaggio');
   back.className='chefai-player-button chefai-player-secondary';next.className='chefai-player-button chefai-player-primary';read.className='chefai-player-button chefai-player-play';
   [back,next,read].forEach(button=>{button.type='button'});
@@ -202,7 +234,7 @@ function startGuide(recipe,servings,startIndex=0){
     saveSession(recipe,servings,index);
   }
   back.onclick=()=>{index=Math.max(0,index-1);show()};
-  next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
+  next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);if(screenWakeVisibilityHandler)document.removeEventListener('visibilitychange',screenWakeVisibilityHandler);releaseScreenWakeLock();area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
   const speechCache=new Map();
   let ttsContext=null,ttsSource=null,ttsRequestController=null,ttsPlaybackId=0;
   const stopTTS=()=>{
@@ -391,7 +423,7 @@ function startGuide(recipe,servings,startIndex=0){
     finally{askButton.disabled=false}
   };
   askBox.append(askInput,askButton,answer);
-  result.append(area,nav,askBox);show();
+  result.append(screenWakeStatus,area,nav,askBox);show();
 }
 $('#search-btn').onclick=async()=>{
   const query=$('#search-q').value.trim();if(query.length<2){say('Scrivi almeno due caratteri.');return}
