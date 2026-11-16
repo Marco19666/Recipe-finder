@@ -595,7 +595,7 @@ async def chef_ai_speech(request: Request):
         raise HTTPException(status_code=400,detail="Il testo da leggere deve contenere da 1 a 15.000 caratteri.")
     try:
         env=request.scope["env"]
-        result=await env.AI.run("xai/grok-tts",{"text":text,"language":"it","voice_id":"ara","output_format":{"codec":"mp3","sample_rate":44100,"bit_rate":192000}})
+        result=await env.AI.run("xai/grok-tts",{"text":text,"language":"it","voice_id":"ara","text_normalization":true,"output_format":{"codec":"mp3","sample_rate":44100,"bit_rate":192000}})
         audio=result.get("audio") if isinstance(result,dict) else getattr(result,"audio",None)
         if not isinstance(audio,str) or not audio.startswith("https://"):
             raise RuntimeError("Il servizio vocale non ha restituito un audio valido.")
