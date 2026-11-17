@@ -1012,3 +1012,9 @@ body[data-theme="dark"] .home-actions > a.chefai-home-button{border-color:#65b9b
 html,body{overscroll-behavior-y:none;-webkit-touch-callout:none}
 body{-webkit-user-select:none;user-select:none}
 input,textarea,select,[contenteditable="true"],[contenteditable=""],[role="textbox"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+
+/* Navigazione informativa e footer */
+.help-nav-link{display:inline-flex;align-items:center;color:var(--green);font-size:12px;font-weight:700;text-decoration:none;padding:8px 10px;border:1px solid var(--line);border-radius:8px}.help-nav-link:hover,.footer-links a:hover{text-decoration:underline}
+footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:22px max(6vw,24px);border-top:1px solid var(--line);color:var(--muted);font-size:11px}footer>span:first-child{font-weight:700;color:var(--ink)}.footer-links{display:flex;gap:16px;flex-wrap:wrap}.footer-links a{color:var(--green);text-decoration:none;font-weight:600}
+@media(max-width:520px){.topbar{height:auto;min-height:76px;align-items:flex-start;padding-top:16px;padding-bottom:16px;gap:10px}.top-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}.help-nav-link{font-size:11px}footer{align-items:flex-start;flex-direction:column}}
