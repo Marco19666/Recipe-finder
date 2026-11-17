@@ -24,15 +24,6 @@ document.querySelectorAll('.chefai-mode').forEach(b=>b.addEventListener('click',
 $('#open-photo-upload')?.addEventListener('click',()=>selectMode('file'));
 const status=$('#chefai-status'),result=$('#chefai-result');
 let activeSpeechStatus=null;
-const androidVoiceFallback=$('#chefai-android-voice');
-const androidVoiceFallbackKey='chefai-android-tts-fallback-v1';
-if(androidVoiceFallback){
-  androidVoiceFallback.checked=localStorage.getItem(androidVoiceFallbackKey)==='true';
-  androidVoiceFallback.addEventListener('change',()=>{
-    localStorage.setItem(androidVoiceFallbackKey,String(androidVoiceFallback.checked));
-    say(androidVoiceFallback.checked?'Voce Android di ripiego attivata. Verrà usata solo se Grok non è disponibile.':'Voce Android di ripiego disattivata. Userò Grok senza passare automaticamente alla voce del dispositivo.');
-  });
-}
 function say(message){if(status){status.hidden=false;status.textContent=message}if(activeSpeechStatus)activeSpeechStatus.textContent=message}
 function node(tag,value){const item=document.createElement(tag);if(value!==undefined)item.textContent=value;return item}
 
@@ -297,13 +288,9 @@ function startGuide(recipe,servings,startIndex=0){
   }
   back.onclick=()=>{index=Math.max(0,index-1);show()};
   next.onclick=()=>{if(index<steps.length-1){index++;show()}else{if(timerInterval)clearInterval(timerInterval);area.replaceChildren(node('h3','Complimenti, hai terminato!'));nav.hidden=true;try{localStorage.removeItem(SESSION_KEY)}catch(_){}}};
-  const speechCache=new Map();
-  let ttsContext=null,ttsSource=null,ttsRequestController=null,ttsPlaybackId=0;
+  let ttsPlaybackId=0;
   const stopTTS=()=>{
     ttsPlaybackId++;
-    if(ttsRequestController){try{ttsRequestController.abort()}catch(_){}ttsRequestController=null}
-    if(ttsSource){try{ttsSource.stop()}catch(_){}ttsSource=null}
-    if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}
     if('speechSynthesis' in window)window.speechSynthesis.cancel();
   };
   function expandCookingAbbreviations(value){
@@ -333,52 +320,34 @@ function startGuide(recipe,servings,startIndex=0){
   }
   const speakText=async (text,onComplete)=>{
     text=expandCookingAbbreviations(text);
-    say('Sto preparando la voce…');
-    let playbackId;
+    say('Sto preparando la voce del dispositivo…');
+    stopTTS();
+    const playbackId=ttsPlaybackId;
     try{
-      stopTTS();
-      playbackId=ttsPlaybackId;
-      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-      if(!AudioContextClass)throw Error('AudioContext non supportato');
-      if(!ttsContext)ttsContext=new AudioContextClass();
-      const resumePromise=ttsContext.state==='suspended'?ttsContext.resume():Promise.resolve();
-      let audioBuffer=speechCache.get(text);
-      if(!audioBuffer){
-        const controller=new AbortController();ttsRequestController=controller;
-        const timeout=setTimeout(()=>controller.abort(),40000);
-        let response;
-        try{response=await fetch('/api/chef-ai/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text}),signal:controller.signal})}
-        finally{clearTimeout(timeout);if(ttsRequestController===controller)ttsRequestController=null}
+      if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale non supportata da questo browser.');
+      const utterance=new SpeechSynthesisUtterance(text);
+      utterance.lang='it-IT';
+      utterance.rate=0.96;
+      utterance.pitch=1;
+      const chooseVoice=()=>{
+        const voices=window.speechSynthesis.getVoices();
+        const italian=voices.find(voice=>/^it(-|_)/i.test(voice.lang));
+        if(italian)utterance.voice=italian;
+      };
+      chooseVoice();
+      utterance.onstart=()=>{if(playbackId===ttsPlaybackId)say('Lettura in corso con la voce italiana disponibile sul dispositivo.')};
+      utterance.onend=()=>{if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete()};
+      utterance.onerror=event=>{
         if(playbackId!==ttsPlaybackId)return;
-        if(!response.ok){let detail='Servizio vocale non disponibile (HTTP '+response.status+').';try{detail=(await response.json()).detail||detail}catch(_){}throw Error(detail)}
-        const bytes=await response.arrayBuffer();if(!bytes.byteLength)throw Error('Audio vuoto');
-        audioBuffer=await ttsContext.decodeAudioData(bytes.slice(0));speechCache.set(text,audioBuffer);
-      }
-      await resumePromise;
-      if(playbackId!==ttsPlaybackId)return;
-      if(ttsContext.state!=='running')throw Error('AudioContext non attivo');
-      ttsSource=ttsContext.createBufferSource();ttsSource.buffer=audioBuffer;ttsSource.connect(ttsContext.destination);ttsSource.onended=()=>{ttsSource=null;if(typeof onComplete==='function')onComplete()};ttsSource.start(0);
-      say('Riproduzione della voce naturale in corso.');
-    }catch(error){
-      const playbackId=ttsPlaybackId;
-      console.warn('Chef-AI neural TTS:',error);
-      if(localStorage.getItem('chefai-android-tts-fallback-v1')==='true'){
-        try{
-          if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale del dispositivo non supportata.');
-          window.speechSynthesis.cancel();
-          const utterance=new SpeechSynthesisUtterance(text);utterance.lang='it-IT';utterance.rate=0.96;utterance.pitch=1;
-          const voices=window.speechSynthesis.getVoices();const italian=voices.find(v=>/^it(-|_)/i.test(v.lang));if(italian)utterance.voice=italian;
-          utterance.onstart=()=>say('Grok non disponibile: lettura con la voce italiana del dispositivo.');
-          utterance.onend=()=>{if(typeof onComplete==='function')onComplete()};
-          utterance.onerror=event=>{say('Anche la voce del dispositivo non è partita ('+(event.error||'errore audio')+'). Controlla volume e impostazioni audio.');if(typeof onComplete==='function')onComplete()};
-          window.speechSynthesis.speak(utterance);
-          say('Grok non disponibile: uso la voce Android di ripiego (attivabile nelle impostazioni).');
-        }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'));if(typeof onComplete==='function')onComplete()}
-      }else{
-        const detail=String(error?.message||'errore sconosciuto');
-        say('Voce Grok non disponibile: '+detail+'. Puoi attivare la voce Android dalle impostazioni di Chef-AI.');
+        say('La sintesi vocale del dispositivo non è riuscita ('+(event.error||'errore audio')+'). Controlla le impostazioni vocali e riprova.');
         if(typeof onComplete==='function')onComplete();
-      }
+      };
+      window.speechSynthesis.speak(utterance);
+      say('Voce del dispositivo: avvio della lettura…');
+    }catch(error){
+      if(playbackId!==ttsPlaybackId)return;
+      say('Voce non disponibile: '+(error.message||'errore sconosciuto')+'. Controlla le impostazioni vocali del dispositivo.');
+      if(typeof onComplete==='function')onComplete();
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
