@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from html.parser import HTMLParser
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -62,38 +62,7 @@ ALLOWED_SITES = {
     "ricettedellanonna.net",
     "tavolartegusto.it",
 }
-DUCKDUCKGO_ENDPOINT = "https://html.duckduckgo.com/html/"
-USER_AGENT = "Mozilla/5.0 (compatible; RecipeFinder/0.1; recipe search)"
 RECIPE_USER_AGENT = "RecipeFinder/0.1 (recipe search; respects publisher access controls)"
-
-
-class DuckDuckGoResultsParser(HTMLParser):
-    """Extract ordinary web results from DuckDuckGo's HTML results page."""
-
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.results = []
-        self._active = None
-        self._capture = None
-
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-        classes = attrs.get("class", "").split()
-
-        if tag == "a" and "result__a" in classes:
-            self._active = {"title": "", "url": attrs.get("href", ""), "description": ""}
-            self.results.append(self._active)
-            self._capture = "title"
-        elif tag == "a" and "result__snippet" in classes and self._active is not None:
-            self._capture = "description"
-
-    def handle_data(self, data):
-        if self._active is not None and self._capture:
-            self._active[self._capture] += data
-
-    def handle_endtag(self, tag):
-        if tag == "a":
-            self._capture = None
 
 
 class JsonLdParser(HTMLParser):
@@ -132,16 +101,6 @@ def allowed_host(url: str) -> str | None:
         return host
     except ValueError:
         return None
-
-
-def direct_result_url(url: str) -> str:
-    """Unwrap DuckDuckGo redirect links without following arbitrary redirects."""
-    parsed = urlparse(url)
-    if parsed.hostname and parsed.hostname.endswith("duckduckgo.com"):
-        target = parse_qs(parsed.query).get("uddg", [None])[0]
-        if target:
-            return target
-    return url
 
 
 def _walk_json(value):
