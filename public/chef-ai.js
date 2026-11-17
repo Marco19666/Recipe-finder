@@ -70,7 +70,34 @@ function render(recipe,presetServings=null){
     result.append(node('p',label+': '+(issue.message||'Problema di validazione')));
   });
   const blocked=audit.status==='blocking'||recipe.validation?.status==='errore'||findings.some(f=>f.severity==='blocking'&&!f.resolved)||validationIssues.some(issue=>issue.severity==='blocking');
-  if(blocked){result.append(node('p','La ricetta presenta problemi bloccanti: occorre chiarirli o correggerli prima di avviare la guida.'));return}
+  if(blocked){
+    const warning=node('section');warning.className='chefai-issues';
+    warning.append(node('h3','Completiamo insieme i dati mancanti'));
+    warning.append(node('p','La guida è momentaneamente in pausa, ma puoi correggere qui sotto la ricetta. Modifica i campi segnalati e premi “Ricontrolla la ricetta”: Chef-AI eseguirà una nuova verifica.'));
+    const editor=node('div');editor.className='chefai-repair-editor';
+    const addField=(labelText,value,multiline=false)=>{
+      const wrap=node('div');wrap.className='chefai-field chefai-field-wide';
+      const label=node('label',labelText);const field=node(multiline?'textarea':'input');
+      field.value=value||'';field.setAttribute('aria-label',labelText);
+      if(multiline)field.rows=5;
+      wrap.append(label,field);editor.append(wrap);return field;
+    };
+    const nameField=addField('Nome della ricetta',recipe.name||'');
+    const servingsField=addField('Porzioni originali',recipe.servings?.original??'');
+    const ingredientsField=addField('Ingredienti (uno per riga)',(recipe.ingredients||[]).map(item=>[item.name,item.quantity??'',item.unit||''].filter(v=>v!== '').join(' ')).join('\n'),true);
+    const stepsField=addField('Preparazione (un passaggio per riga)',(recipe.steps||[]).map(step=>step.instruction||'').join('\n'),true);
+    const equipmentField=addField('Attrezzatura (una per riga)',(recipe.equipment||[]).join('\n'),true);
+    const repairButton=node('button','Ricontrolla la ricetta');repairButton.type='button';repairButton.className='chefai-action';
+    repairButton.onclick=()=>{
+      const correctedName=nameField.value.trim(),correctedServings=servingsField.value.trim(),correctedIngredients=ingredientsField.value.trim(),correctedSteps=stepsField.value.trim(),correctedEquipment=equipmentField.value.trim();
+      if(!correctedName||!correctedIngredients||!correctedSteps){say('Inserisci almeno nome, ingredienti e preparazione prima di ricontrollare.');return}
+      const correctedText='Nome ricetta: '+correctedName+'\nPorzioni originali: '+(correctedServings||'non indicate')+'\nIngredienti:\n'+correctedIngredients+'\nPreparazione:\n'+correctedSteps+'\nStrumenti:\n'+(correctedEquipment||'non specificati');
+      standardize({text:correctedText});
+    };
+    warning.append(editor,repairButton);
+    result.append(warning);
+    return;
+  }
   const panel=node('div');
   const hasKnownOriginal=Number(recipe.servings?.original)>0;
   if(!hasKnownOriginal){
