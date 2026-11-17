@@ -16,6 +16,7 @@
 const $=s=>document.querySelector(s);
 let mode=null;
 const SESSION_KEY='chefai-session-v1';
+const chefAIDeviceId=()=>{const key='recipe-finder-device-id';let id='';try{id=localStorage.getItem(key)||'';if(!/^[A-Za-z0-9-]{16,100}$/.test(id)){id=crypto.randomUUID?crypto.randomUUID():('chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2));localStorage.setItem(key,id)}}catch(_){id='chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)}return id};
 const modeChooser=$('#chefai-modes'),sectionTitle=$('#chefai-section-title'),sectionIntro=$('#chefai-section-intro');
 const modeNames={search:'Cerca una ricetta',file:'Carica un file',manual:'Scrivi la ricetta',ai:'Crea con Chef-AI'};
 function showModes(){mode=null;modeChooser.hidden=false;sectionIntro.hidden=false;sectionTitle.textContent='Come vuoi iniziare?';document.querySelectorAll('.chefai-mode').forEach(b=>b.setAttribute('aria-pressed','false'));document.querySelectorAll('.chefai-pane').forEach(p=>p.hidden=true)}
@@ -74,7 +75,7 @@ async function standardize(payload){
   result.replaceChildren();
   document.querySelectorAll('.chefai-action').forEach(button=>button.disabled=true);
   try{
-    const response=await fetch('/api/chef-ai/standardize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await fetch('/api/chef-ai/standardize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,device_id:chefAIDeviceId()})});
     const data=await response.json();
     if(!response.ok)throw Error(data.detail||'Elaborazione non riuscita.');
     if(!data.recipe)throw Error('La risposta non contiene una ricetta valida.');
@@ -186,9 +187,7 @@ function startGuide(recipe,servings,startIndex=0){
   let index=Math.min(Math.max(0,startIndex),steps.length-1),timerInterval=null,timerRemaining=Number(steps[index].timer_seconds)||0,timerEndsAt=null,timerPaused=false,timerFinished=false,currentAudio=null;
   let timerAlarmInterval=null,timerAlarmTimeout=null,timerAlarmContext=null;
   const conversation=[];
-  const deviceKey='recipe-finder-device-id';
-  let deviceId='';
-  try{deviceId=localStorage.getItem(deviceKey)||'';if(!/^[A-Za-z0-9-]{16,100}$/.test(deviceId)){deviceId=(crypto.randomUUID?crypto.randomUUID():('chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)));localStorage.setItem(deviceKey,deviceId)}}catch(_){deviceId='chefai-'+Date.now()+'-'+Math.random().toString(36).slice(2)}
+  const deviceId=chefAIDeviceId();
   function show(){
     if(area._chefTimer?.stopAlarm)area._chefTimer.stopAlarm();
     if(timerInterval){clearInterval(timerInterval);timerInterval=null}
