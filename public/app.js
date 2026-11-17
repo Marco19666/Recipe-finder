@@ -717,8 +717,23 @@ loadDailyRecipe().catch(error => {
 let deferredInstallPrompt=null;
 const installButton=document.querySelector("#install-app");
 if(installButton){
+  // I browser non espongono un controllo universale dell'installazione da una scheda.
+  // Possiamo però riconoscere l'app quando viene avviata nella sua finestra PWA.
+  const installDisplayModes=["standalone","fullscreen","minimal-ui","window-controls-overlay"]
+    .map(mode=>window.matchMedia("(display-mode: "+mode+")"));
+  function isRunningAsInstalledApp(){
+    return installDisplayModes.some(query=>query.matches) || navigator.standalone===true;
+  }
+  function syncInstallButton(){
+    installButton.hidden=isRunningAsInstalledApp();
+  }
+  syncInstallButton();
+  installDisplayModes.forEach(query=>{
+    if(query.addEventListener)query.addEventListener("change",syncInstallButton);
+    else if(query.addListener)query.addListener(syncInstallButton);
+  });
   window.addEventListener("beforeinstallprompt",event=>{
-    event.preventDefault();deferredInstallPrompt=event;installButton.hidden=false;
+    event.preventDefault();deferredInstallPrompt=event;syncInstallButton();
   });
   window.addEventListener("appinstalled",()=>{
     deferredInstallPrompt=null;installButton.hidden=true;notify("Cosa Cucino? è stata installata.");
