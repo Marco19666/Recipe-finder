@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#183b32">
+<title>Indovina la ricetta dagli ingredienti – Recipe Finder</title>
+<style>
+:root{color-scheme:light;--ink:#19382f;--muted:#64766d;--paper:#fffdf8;--green:#1d5946;--pale:#e8f1dc;--line:#e2e8dc}
+*{box-sizing:border-box}html{overscroll-behavior-y:none}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#f8f3e7,#eaf2e6);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#183b32;color:white;padding:15px max(18px,calc((100% - 960px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}header a{color:#e4f0d7;text-decoration:none;font-weight:700}
+main{max-width:900px;margin:auto;padding:23px 17px 55px}.hero{text-align:center;padding:13px 8px 19px}.icon{font-size:58px}.eyebrow{font-size:.75rem;letter-spacing:.13em;font-weight:850;color:#66815e}h1{font-size:clamp(1.9rem,6vw,3rem);margin:5px 0;color:#183b32}.hero p{max-width:600px;margin:8px auto;color:var(--muted);line-height:1.55}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px}.stat,.panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 25px #183b3210}.stat{text-align:center;padding:12px 6px}.stat strong{display:block;font-size:1.35rem}.stat span{font-size:.78rem;color:var(--muted)}
+.panel{padding:clamp(17px,4vw,28px)}.top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.tag{background:var(--pale);border-radius:99px;padding:7px 12px;font-size:.8rem;font-weight:800}.track{height:9px;background:#e9e9df;border-radius:99px;overflow:hidden;margin:15px 0 20px}.track i{display:block;height:100%;width:0;background:#79a66b;transition:width .25s}
+.question{text-align:center}.question .emoji{font-size:42px}.question h2{font-size:clamp(1.25rem,4vw,1.8rem);margin:5px 0}.question p{color:var(--muted);margin:0 0 15px}.ingredient-list{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:17px 0 20px}.ingredient{background:#f1f4e9;border:1px solid #e0e8d8;border-radius:99px;padding:9px 13px;font-weight:750;font-size:.92rem;animation:pop .2s ease}.ingredient.new{background:#e3f2d9;border-color:#9fbe91}@keyframes pop{from{transform:scale(.9);opacity:.4}to{transform:scale(1);opacity:1}}
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.answer{background:white;border:2px solid #dfe5d9;border-radius:13px;min-height:54px;padding:11px;font:inherit;font-weight:750;color:var(--ink);cursor:pointer}.answer:hover:not(:disabled){border-color:#7ea36d;background:#f7faef}.answer:disabled{opacity:1;cursor:default}.answer.correct{background:#e6f3df;border-color:#5f995d}.answer.wrong{background:#fff0e9;border-color:#d47b64}.feedback{display:none;margin-top:14px;padding:13px;border-radius:12px;background:#f1f3e9;line-height:1.5}.feedback.show{display:block}.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:19px}button.primary,button.secondary{border:0;border-radius:99px;padding:13px 22px;font:inherit;font-weight:800;cursor:pointer}.primary{background:var(--green);color:white}.secondary{background:#e8efdf;color:#284536}.primary:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.note{text-align:center;color:var(--muted);font-size:.82rem;margin:17px 0}
+@media(max-width:520px){.answers{grid-template-columns:1fr}.stats{gap:7px}.stat{padding:10px 3px}.stat strong{font-size:1.15rem}header{padding:13px 15px}}
+</style>
+</head>
+<body>
+<header><strong>🍳 Recipe Finder</strong><a href="/chef-challenge.html">← Sala giochi</a></header>
+<main>
+<section class="hero"><div class="icon">🧺</div><div class="eyebrow">LA SFIDA DEGLI INGREDIENTI</div><h1>Indovina la ricetta</h1><p>Ti mostriamo gli ingredienti uno alla volta. Scegli la ricetta giusta tra 10 possibilità: ogni errore svela un nuovo ingrediente, ma ti costa 25 punti!</p></section>
+<div class="stats"><div class="stat"><strong id="score">0</strong><span>Punti partita</span></div><div class="stat"><strong id="best">0</strong><span>Record personale</span></div><div class="stat"><strong id="level">Apprendista</strong><span>Il tuo livello</span></div></div>
+<section class="panel" id="game">
+<div class="top"><span class="tag" id="round">Ricetta 1 di 10</span><span class="tag" id="value">In palio: 250 punti</span></div><div class="track"><i id="bar"></i></div>
+<div class="question"><div class="emoji">🥕</div><h2>Quale ricetta prepareresti con questi ingredienti?</h2><p id="hint">Ecco il primo ingrediente. Scegli tra le 10 ricette.</p></div>
+<div class="ingredient-list" id="ingredients" aria-live="polite"></div><div class="answers" id="answers"></div><div class="feedback" id="feedback" aria-live="polite"></div>
+<div class="actions"><button class="primary" id="next" disabled>Prossima ricetta →</button></div>
+</section>
+<section class="panel hidden" id="result"><div class="question"><div class="emoji">🏆</div><h2>Sfida completata!</h2><p id="summary"></p><p id="resultLevel"></p></div><div class="actions"><button class="primary" id="again">Gioca di nuovo</button><a class="secondary" href="/chef-challenge.html" style="text-decoration:none;display:inline-flex;align-items:center">Torna alla sala giochi</a></div></section>
+<p class="note">10 ricette per partita. Il record personale viene salvato su questo dispositivo.</p>
+</main>
+<script>
+(()=>{
+const bank=[
+{dish:"Carbonara",emoji:"🍝",ingredients:["pasta","guanciale","uova","pecorino romano","pepe nero"]},
+{dish:"Amatriciana",emoji:"🍝",ingredients:["pasta","guanciale","pomodori pelati","pecorino romano","peperoncino"]},
+{dish:"Cacio e pepe",emoji:"🍝",ingredients:["tonnarelli","pecorino romano","pepe nero","acqua di cottura"]},
+{dish:"Pasta al pesto",emoji:"🌿",ingredients:["basilico","pinoli","parmigiano","pecorino","aglio","olio extravergine"]},
+{dish:"Lasagne alla bolognese",emoji:"🍲",ingredients:["sfoglie di pasta","ragù","besciamella","parmigiano","burro"]},
+{dish:"Risotto alla milanese",emoji:"🍚",ingredients:["riso Carnaroli","zafferano","brodo","burro","midollo","parmigiano"]},
+{dish:"Parmigiana di melanzane",emoji:"🍆",ingredients:["melanzane","passata di pomodoro","mozzarella","parmigiano","basilico"]},
+{dish:"Tiramisù",emoji:"☕",ingredients:["savoiardi","mascarpone","uova","caffè","cacao amaro","zucchero"]},
+{dish:"Pesto alla genovese",emoji:"🌱",ingredients:["basilico genovese","pinoli","aglio","parmigiano","pecorino","olio extravergine"]},
+{dish:"Polpette al sugo",emoji:"🍅",ingredients:["carne macinata","uovo","pane","latte","parmigiano","passata di pomodoro"]},
+{dish:"Gnocchi alla sorrentina",emoji:"🥔",ingredients:["patate","farina","passata di pomodoro","mozzarella","parmigiano","basilico"]},
+{dish:"Frittata di zucchine",emoji:"🍳",ingredients:["uova","zucchine","parmigiano","olio extravergine","sale"]},
+{dish:"Panzanella",emoji:"🥗",ingredients:["pane raffermo","pomodori","cetriolo","cipolla rossa","aceto","basilico"]},
+{dish:"Minestrone",emoji:"🥣",ingredients:["carote","sedano","cipolla","zucchine","patate","fagioli","pomodori"]},
+{dish:"Caprese",emoji:"🍅",ingredients:["pomodori","mozzarella","basilico","olio extravergine","sale"]},
+{dish:"Focaccia genovese",emoji:"🥖",ingredients:["farina","lievito","acqua","olio extravergine","sale"]},
+{dish:"Arancini",emoji:"🍘",ingredients:["riso","zafferano","ragù","piselli","caciocavallo","pangrattato"]},
+{dish:"Cannoli siciliani",emoji:"🍰",ingredients:["farina","ricotta","zucchero","gocce di cioccolato","scorza d'arancia"]},
+{dish:"Torta di mele",emoji:"🍎",ingredients:["mele","farina","uova","burro","zucchero","lievito"]},
+{dish:"Pasta alla norma",emoji:"🍆",ingredients:["pasta","melanzane","pomodori","ricotta salata","basilico"]}
+];
+const $=id=>document.getElementById(id),bestKey="recipe-finder-ingredient-riddle-best-v1";
+let round=0,score=0,best=Number(localStorage.getItem(bestKey)||0),order=[],target=null,options=[],revealed=0,earned=0,locked=false;
+$("best").textContent=best;
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+function level(n){return n>=1800?"Chef stellato":n>=1200?"Sous-chef":n>=600?"Cuoco esperto":"Apprendista"}
+function start(){round=0;score=0;order=shuffle(bank).slice(0,10);$("score").textContent=score;$("game").classList.remove("hidden");$("result").classList.add("hidden");loadRound()}
+function loadRound(){
+ target=order[round];revealed=1;earned=250;locked=false;
+ options=shuffle([target,...shuffle(bank.filter(x=>x!==target)).slice(0,9)]);
+ $("round").textContent="Ricetta "+(round+1)+" di 10";$("value").textContent="In palio: "+earned+" punti";
+ $("bar").style.width=(round/10*100)+"%";$("hint").textContent="Primo ingrediente: quale ricetta è?";$("feedback").className="feedback";$("feedback").textContent="";$("next").disabled=true;
+ renderIngredients();renderAnswers()
+}
+function renderIngredients(){
+ $("ingredients").innerHTML="";
+ target.ingredients.slice(0,revealed).forEach((name,i)=>{const chip=document.createElement("span");chip.className="ingredient"+(i===revealed-1?" new":"");chip.textContent=name;$("ingredients").append(chip)});
+}
+function renderAnswers(){
+ $("answers").innerHTML="";
+ options.forEach(option=>{const btn=document.createElement("button");btn.type="button";btn.className="answer";btn.textContent=option.dish;btn.addEventListener("click",()=>choose(option,btn));$("answers").append(btn)});
+}
+function choose(option,btn){
+ if(locked)return;
+ if(option===target){
+  locked=true;const buttons=[...$("answers").children];buttons.forEach(b=>{b.disabled=true;if(b.textContent===target.dish)b.classList.add("correct")});
+  score+=earned;$("score").textContent=score;$("feedback").textContent="Esatto! "+target.dish+" "+target.emoji+" Hai conquistato "+earned+" punti."; $("feedback").className="feedback show";$("next").disabled=false;
+ }else{
+  btn.disabled=true;btn.classList.add("wrong");revealed=Math.min(revealed+1,target.ingredients.length);earned=Math.max(25,earned-25);$("value").textContent="In palio: "+earned+" punti";
+  if(revealed>1)$("hint").textContent="Non è quella giusta! Ecco un altro ingrediente. Riprova.";
+  renderIngredients();
+  if(revealed===target.ingredients.length)$("hint").textContent="Ultimo indizio! La risposta è tra le opzioni rimaste.";
+ }
+}
+function finishRound(){
+ round++;
+ if(round>=10){
+  $("game").classList.add("hidden");$("result").classList.remove("hidden");$("bar").style.width="100%";
+  if(score>best){best=score;localStorage.setItem(bestKey,String(best));$("best").textContent=best}
+  $("summary").textContent="Hai totalizzato "+score+" punti su 2500 possibili in 10 ricette.";
+  $("resultLevel").textContent="Il tuo livello: "+level(score)+". Record personale: "+best+" punti.";
+ }else loadRound()
+}
+$("next").addEventListener("click",finishRound);$("again").addEventListener("click",start);
+start();
+})();
+</script>
+</body></html>
