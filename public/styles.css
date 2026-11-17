@@ -1006,3 +1006,9 @@ body[data-theme="dark"] .home-actions > a.chefai-home-button{border-color:#65b9b
 @keyframes chefai-home-pulse{0%,100%{box-shadow:0 8px 22px #174f5330;filter:brightness(1)}50%{box-shadow:0 9px 27px #247b7870;filter:brightness(1.09)}}
 @media(max-width:520px){.home-actions > a.chefai-home-button{width:100%!important;padding:12px 15px!important}}
 @media(prefers-reduced-motion:reduce){.home-actions > a.chefai-home-button{animation:none}}
+
+
+/* Protezioni anti pull-to-refresh e copia: i campi restano selezionabili/editabili. */
+html,body{overscroll-behavior-y:none;-webkit-touch-callout:none}
+body{-webkit-user-select:none;user-select:none}
+input,textarea,select,[contenteditable="true"],[contenteditable=""],[role="textbox"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
