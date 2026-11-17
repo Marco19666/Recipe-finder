@@ -57,10 +57,10 @@ const $=id=>document.getElementById(id),bestKey="recipe-finder-ingredient-riddle
 let round=0,score=0,best=Number(localStorage.getItem(bestKey)||0),order=[],target=null,options=[],revealed=0,earned=0,locked=false;
 $("best").textContent=best;
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
-function level(n){return n>=1800?"Chef stellato":n>=1200?"Sous-chef":n>=600?"Cuoco esperto":"Apprendista"}
-function start(){round=0;score=0;order=shuffle(bank).slice(0,10);$("score").textContent=score;$("game").classList.remove("hidden");$("result").classList.add("hidden");loadRound()}
+function level(n){return n>=180?"Chef stellato":n>=120?"Sous-chef":n>=60?"Cuoco esperto":"Apprendista"}
+function start(){round=0;score=0;order=shuffle(bank).slice(0,10);$("score").textContent=score;$("level").textContent=level(score);$("game").classList.remove("hidden");$("result").classList.add("hidden");loadRound()}
 function loadRound(){
- target=order[round];revealed=1;earned=250;locked=false;
+ target=order[round];revealed=1;earned=25;locked=false;
  options=shuffle([target,...shuffle(bank.filter(x=>x!==target)).slice(0,9)]);
  $("round").textContent="Ricetta "+(round+1)+" di 10";$("value").textContent="In palio: "+earned+" punti";
  $("bar").style.width=(round/10*100)+"%";$("hint").textContent="Primo ingrediente: quale ricetta è?";$("feedback").className="feedback";$("feedback").textContent="";$("next").disabled=true;
@@ -78,12 +78,13 @@ function choose(option,btn){
  if(locked)return;
  if(option===target){
   locked=true;const buttons=[...$("answers").children];buttons.forEach(b=>{b.disabled=true;if(b.textContent===target.dish)b.classList.add("correct")});
-  score+=earned;$("score").textContent=score;$("feedback").textContent="Esatto! "+target.dish+" "+target.emoji+" Hai conquistato "+earned+" punti."; $("feedback").className="feedback show";$("next").disabled=false;
+  score+=earned;$("score").textContent=score;$("level").textContent=level(score);$("feedback").textContent="Esatto! "+target.dish+" "+target.emoji+" Hai conquistato "+earned+" punti."; $("feedback").className="feedback show";$("next").disabled=false;
  }else{
-  btn.disabled=true;btn.classList.add("wrong");revealed=Math.min(revealed+1,target.ingredients.length);earned=Math.max(25,earned-25);$("value").textContent="In palio: "+earned+" punti";
+  btn.disabled=true;btn.classList.add("wrong");revealed=Math.min(revealed+1,target.ingredients.length);earned=Math.max(0,earned-5);$("value").textContent="In palio: "+earned+" punti";
   if(revealed>1)$("hint").textContent="Non è quella giusta! Ecco un altro ingrediente. Riprova.";
   renderIngredients();
-  if(revealed===target.ingredients.length)$("hint").textContent="Ultimo indizio! La risposta è tra le opzioni rimaste.";
+  if(revealed===target.ingredients.length)$("hint").textContent="Hai tutti gli ingredienti! La risposta è tra le opzioni rimaste.";
+  if(earned===0){locked=true;[...$("answers").children].forEach(b=>b.disabled=true);$("ingredients").innerHTML="";target.ingredients.forEach(name=>{const chip=document.createElement("span");chip.className="ingredient";chip.textContent=name;$("ingredients").append(chip)});$("feedback").textContent="Hai esaurito i 5 tentativi! La ricetta era "+target.dish+". Nessun punto per questa manche.";$("feedback").className="feedback show";$("next").disabled=false;$("hint").textContent="Manche terminata: prova la prossima ricetta!";}
  }
 }
 function finishRound(){
@@ -91,7 +92,7 @@ function finishRound(){
  if(round>=10){
   $("game").classList.add("hidden");$("result").classList.remove("hidden");$("bar").style.width="100%";
   if(score>best){best=score;localStorage.setItem(bestKey,String(best));$("best").textContent=best}
-  $("summary").textContent="Hai totalizzato "+score+" punti su 2500 possibili in 10 ricette.";
+  $("summary").textContent="Hai totalizzato "+score+" punti su 250 possibili in 10 ricette.";
   $("resultLevel").textContent="Il tuo livello: "+level(score)+". Record personale: "+best+" punti.";
  }else loadRound()
 }
