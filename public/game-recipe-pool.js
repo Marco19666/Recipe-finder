@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const cacheKey="recipe-finder-game-recipe-cache-v1";
-function strings(value){if(!Array.isArray(value))return[];return value.map(x=>typeof x==="string"?x:(x&&typeof x.text==="string"?x.text:(x&&typeof x.name==="string"?x.name:""))).map(x=>x.replace(/\\s+/g," ").trim()).filter(Boolean)}
+function strings(value){if(!Array.isArray(value))return[];return value.map(x=>typeof x==="string"?x:(x&&typeof x.text==="string"?x.text:(x&&typeof x.name==="string"?x.name:""))).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean)}
 async function load(){
  const urls=new Map();
  try{const d=JSON.parse(localStorage.getItem("recipe-finder-daily-recipe-v1")||"null");if(d?.item?.url)urls.set(d.item.url,d.item.title||"")}
