@@ -66,14 +66,14 @@
   }
   function updateQuota(key,remaining){
     const label=quotaLabels[key],button=quotaButtons[key];
-    label.textContent=remaining+" di 2 ricerche disponibili";
+    label.textContent=remaining+" di 4 ricerche disponibili";
     button.disabled=remaining<=0;
-    if(remaining<=0)label.textContent="Hai esaurito le 2 ricerche disponibili in "+(key==="budget"?"SalvaSoldi.":"QuantoSpendo.");
+    if(remaining<=0)label.textContent="Hai esaurito le 4 ricerche disponibili in "+(key==="budget"?"SalvaSoldi.":"QuantoSpendo.");
   }
   async function refreshQuotas(){
     for(const key of ["budget","cost"]){
       try{const r=await fetch("/api/salvasoldi/status?device_id="+encodeURIComponent(deviceId())+"&mode="+quotaKeys[key],{cache:"no-store"});const d=await r.json();if(r.ok)updateQuota(key,d.remaining);}
-      catch(_){quotaLabels[key].textContent="Limite: 2 ricerche per dispositivo";}
+      catch(_){quotaLabels[key].textContent="Limite: 4 ricerche per dispositivo";}
     }
   }
   refreshQuotas();
