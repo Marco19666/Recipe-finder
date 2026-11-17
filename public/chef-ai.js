@@ -334,9 +334,10 @@ function startGuide(recipe,servings,startIndex=0){
   const speakText=async (text,onComplete)=>{
     text=expandCookingAbbreviations(text);
     say('Sto preparando la voce…');
+    let playbackId;
     try{
       stopTTS();
-      const playbackId=ttsPlaybackId;
+      playbackId=ttsPlaybackId;
       const AudioContextClass=window.AudioContext||window.webkitAudioContext;
       if(!AudioContextClass)throw Error('AudioContext non supportato');
       if(!ttsContext)ttsContext=new AudioContextClass();
