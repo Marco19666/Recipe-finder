@@ -30,6 +30,7 @@ main{max-width:900px;margin:auto;padding:23px 17px 55px}.hero{text-align:center;
 <section class="panel hidden" id="result"><div class="recipe"><div class="emoji">🏆</div><h2>Partita completata!</h2><p id="summary"></p><p id="resultLevel"></p></div><div class="actions"><button class="primary" id="again">Gioca di nuovo</button><a class="secondary" href="/chef-challenge.html" style="text-decoration:none;display:inline-flex;align-items:center">Torna alla sala giochi</a></div></section>
 <p class="note">Ogni passaggio nella posizione corretta vale 10 punti. Il record viene salvato su questo dispositivo.</p>
 </main>
+<script src="/game-recipe-pool.js?v=1"></script>
 <script>
 (()=>{
 const recipes=[
@@ -54,7 +55,8 @@ function move(i,delta){if(locked)return;const j=i+delta;if(j<0||j>=current[round
 function check(){if(locked)return;locked=true;const recipe=current[round],rows=[...$("steps").children];let correct=0;current[round].order.forEach((step,i)=>{if(step.index===i)correct++});score+=correct*10;rows.forEach((row,i)=>{row.classList.add(current[round].order[i].index===i?"correct":"incorrect")});renderSteps();paint();$("bar").style.width=((round+1)/5*100)+"%";$("feedback").className="feedback show";$("feedback").textContent=correct===recipe.steps.length?"Perfetto! Tutti i passaggi sono nell'ordine giusto: 50 punti!":"Hai sistemato correttamente "+correct+" passaggi su "+recipe.steps.length+". Hai guadagnato "+(correct*10)+" punti. L'ordine corretto è evidenziato in verde.";if(round===4){$("next").textContent="Vedi il risultato →"}$("check").classList.add("hidden");$("next").classList.remove("hidden")}
 function advance(){if(!locked)return;round++;if(round>=5){finish();return}load()}
 function finish(){if(score>best){best=score;localStorage.setItem(bestKey,String(best))}paint();$("game").classList.add("hidden");$("result").classList.remove("hidden");$("summary").textContent="Hai totalizzato "+score+" punti su 250 possibili in 5 manche. Record personale: "+best+" punti.";$("resultLevel").textContent="Il tuo livello: "+level(score)+"."}
-$("check").addEventListener("click",check);$("next").addEventListener("click",advance);$("again").addEventListener("click",()=>{current=shuffle(recipes).slice(0,5);start()});current=shuffle(recipes).slice(0,5);start();paint();
+$("check").addEventListener("click",check);$("next").addEventListener("click",advance);$("again").addEventListener("click",()=>{current=shuffle(recipes).slice(0,5);start()});
+const launch=async()=>{try{const extra=await window.RecipeGamePool.load();extra.forEach(r=>{if(!recipes.some(x=>x.title.toLocaleLowerCase('it')===r.title.toLocaleLowerCase('it')))recipes.push({title:r.title,emoji:r.emoji,ingredients:r.ingredients,steps:r.steps})})}catch(_){}current=shuffle(recipes).slice(0,5);start();paint()};launch();
 })();
 </script>
 </body></html>
