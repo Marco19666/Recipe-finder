@@ -57,7 +57,7 @@ const $=id=>document.getElementById(id),bestKey="recipe-finder-ingredient-riddle
 let round=0,score=0,best=Number(localStorage.getItem(bestKey)||0),order=[],target=null,options=[],revealed=0,earned=0,locked=false;
 $("best").textContent=best;
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
-function level(n){return n>=180?"Chef stellato":n>=120?"Sous-chef":n>=60?"Cuoco esperto":"Apprendista"}
+function level(n){return n>=250?"Master Chef":n>=180?"Chef esperto":n>=100?"Cuoco provetto":n>=50?"Aiuto cuoco":"Apprendista"}
 function start(){round=0;score=0;order=shuffle(bank).slice(0,10);$("score").textContent=score;$("level").textContent=level(score);$("game").classList.remove("hidden");$("result").classList.add("hidden");loadRound()}
 function loadRound(){
  target=order[round];revealed=1;earned=25;locked=false;
