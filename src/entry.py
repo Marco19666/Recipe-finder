@@ -543,37 +543,6 @@ async def chef_ai_standardize(request: Request):
         raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Dettaglio tecnico: "+str(exc)[:700]) from exc
 
 
-@app.post("/api/chef-ai/speech")
-async def chef_ai_speech(request: Request):
-    try:
-        payload=await request.json()
-    except Exception:
-        raise HTTPException(status_code=400,detail="Testo non valido.")
-    text=str(payload.get("text") or "").strip() if isinstance(payload,dict) else ""
-    if not text or len(text)>15000:
-        raise HTTPException(status_code=400,detail="Il testo da leggere deve contenere da 1 a 15.000 caratteri.")
-    try:
-        env=request.scope["env"]
-        result=await env.AI.run("xai/grok-tts",{"text":text,"language":"it","voice_id":"ara","text_normalization":True,"output_format":{"codec":"mp3","sample_rate":44100,"bit_rate":192000}})
-        audio=result.get("audio") if isinstance(result,dict) else getattr(result,"audio",None)
-        if not isinstance(audio,str) or not audio.startswith("https://"):
-            raise RuntimeError("Il servizio vocale non ha restituito un audio valido.")
-        async with httpx.AsyncClient(timeout=35.0,follow_redirects=True) as client:
-            audio_response=await client.get(audio)
-            audio_response.raise_for_status()
-        if not audio_response.content:
-            raise RuntimeError("Il file audio generato è vuoto.")
-        return Response(content=audio_response.content,media_type="audio/mpeg",headers={"Cache-Control":"no-store"})
-    except Exception as exc:
-        import re
-        error_type = type(exc).__name__
-        error_detail = re.sub(r"https?://\\S+", "[URL nascosto]", str(exc))
-        error_detail = re.sub(r"(?i)(authorization|bearer|token|api[_ -]?key)(\\s*[:=]\\s*|\\s+)[^\\s,;]+", r"\\1\\2[omesso]", error_detail)
-        error_detail = " ".join(error_detail.split())[:220]
-        print("Chef-AI sintesi vocale fallita:", error_type, error_detail)
-        detail = "Errore Grok TTS (" + error_type + "): " + (error_detail or "nessun dettaglio fornito dal servizio")
-        raise HTTPException(status_code=503,detail=detail) from exc
-
 
 @app.get("/api/chef/status")
 async def chef_status(request: Request, device_id: str = Query(min_length=16, max_length=100)):
