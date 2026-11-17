@@ -23,6 +23,15 @@ function selectMode(next){mode=next;modeChooser.hidden=true;sectionIntro.hidden=
 document.querySelectorAll('.chefai-mode').forEach(b=>b.addEventListener('click',()=>selectMode(b.dataset.mode)));
 $('#open-photo-upload')?.addEventListener('click',()=>selectMode('file'));
 const status=$('#chefai-status'),result=$('#chefai-result');
+const androidVoiceFallback=$('#chefai-android-voice');
+const androidVoiceFallbackKey='chefai-android-tts-fallback-v1';
+if(androidVoiceFallback){
+  androidVoiceFallback.checked=localStorage.getItem(androidVoiceFallbackKey)==='true';
+  androidVoiceFallback.addEventListener('change',()=>{
+    localStorage.setItem(androidVoiceFallbackKey,String(androidVoiceFallback.checked));
+    say(androidVoiceFallback.checked?'Voce Android di ripiego attivata. Verrà usata solo se Grok non è disponibile.':'Voce Android di ripiego disattivata. Userò Grok senza passare automaticamente alla voce del dispositivo.');
+  });
+}
 function say(message){status.hidden=false;status.textContent=message}
 function node(tag,value){const item=document.createElement(tag);if(value!==undefined)item.textContent=value;return item}
 
