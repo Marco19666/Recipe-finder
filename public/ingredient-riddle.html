@@ -99,7 +99,7 @@ function finishRound(){
  }else loadRound()
 }
 $("next").addEventListener("click",finishRound);$("again").addEventListener("click",start);
-const launch=async()=>{try{const extra=await window.RecipeGamePool.load();extra.forEach(r=>{if(!bank.some(x=>x.dish.toLocaleLowerCase('it')===r.title.toLocaleLowerCase('it')))bank.push({dish:r.title,emoji:r.emoji,ingredients:r.ingredients})})}catch(_){}start()};launch();
+const launch=async()=>{const add=list=>list.forEach(r=>{if(r.ingredients?.length>=3&&!bank.some(x=>x.dish.toLocaleLowerCase("it")===r.title.toLocaleLowerCase("it")))bank.push({dish:r.title,emoji:r.emoji,ingredients:r.ingredients})});add(window.RecipeGamePool.catalog||[]);try{add(await window.RecipeGamePool.load())}catch(_){}start()};launch();
 })();
 </script>
 </body></html>
