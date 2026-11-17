@@ -21,5 +21,5 @@ async function load(){
  try{localStorage.setItem(cacheKey,JSON.stringify(cache))}catch{}
  return recipes.filter(Boolean);
 }
-window.RecipeGamePool={load};
+window.RecipeGamePool={load,catalog};
 })();
