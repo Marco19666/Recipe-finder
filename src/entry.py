@@ -381,10 +381,24 @@ class ChefDailyLimiter(DurableObject):
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_daily_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL)")
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_section_usage (section TEXT PRIMARY KEY, count INTEGER NOT NULL)")
         self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS salvasoldi_section_daily_usage (day TEXT NOT NULL, section TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(day, section))")
+        self.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS feature_daily_usage (day TEXT NOT NULL, feature TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(day, feature))")
     def fetch(self, request):
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(request.url); params = parse_qs(parsed.query)
         day = (params.get("day") or [""])[0]
+        if parsed.path.startswith("/feature-"):
+            feature = (params.get("feature") or [""])[0]
+            if feature not in ("archimede", "chef_ai_standardize", "chef_ai_create") or not day:
+                return WorkerResponse.json({"error":"invalid feature or day"}, status=400)
+            row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM feature_daily_usage WHERE day = ? AND feature = ?), 0) AS count", day, feature).one()
+            count = int(row.count)
+            if parsed.path == "/feature-status": return WorkerResponse.json({"remaining":max(0,4-count),"limit":4})
+            if parsed.path == "/feature-refund":
+                if count > 0: self.ctx.storage.sql.exec("UPDATE feature_daily_usage SET count=count-1 WHERE day=? AND feature=?", day, feature)
+                return WorkerResponse.json({"remaining":max(0,4-count+1),"limit":4})
+            if count >= 4: return WorkerResponse.json({"remaining":0,"limit":4}, status=429)
+            self.ctx.storage.sql.exec("INSERT INTO feature_daily_usage(day,feature,count) VALUES(?,?,1) ON CONFLICT(day,feature) DO UPDATE SET count=count+1", day, feature)
+            return WorkerResponse.json({"remaining":3-count,"limit":4})
         if parsed.path.startswith("/salvasoldi-"):
             section = (params.get("section") or [""])[0]
             if section not in ("create_menu", "calculate_cost") or not day:
@@ -394,22 +408,22 @@ class ChefDailyLimiter(DurableObject):
             if parsed.path == "/salvasoldi-refund":
                 if count > 0:
                     self.ctx.storage.sql.exec("UPDATE salvasoldi_section_daily_usage SET count=count-1 WHERE day=? AND section=?", day, section)
-                return WorkerResponse.json({"remaining":max(0,2-count+1)})
+                return WorkerResponse.json({"remaining":max(0,4-count+1)})
             if parsed.path == "/salvasoldi-status":
-                return WorkerResponse.json({"remaining":max(0,2-count),"limit":2})
-            if count >= 2: return WorkerResponse.json({"remaining":0}, status=429)
+                return WorkerResponse.json({"remaining":max(0,4-count),"limit":4})
+            if count >= 4: return WorkerResponse.json({"remaining":0}, status=429)
             self.ctx.storage.sql.exec("INSERT INTO salvasoldi_section_daily_usage(day,section,count) VALUES(?,?,1) ON CONFLICT(day,section) DO UPDATE SET count=count+1", day, section)
-            return WorkerResponse.json({"remaining":1-count})
+            return WorkerResponse.json({"remaining":3-count})
         if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
         count = int(row.count)
-        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,3-count),"limit":3})
+        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,4-count),"limit":4})
         if parsed.path == "/refund":
             if count > 0: self.ctx.storage.sql.exec("UPDATE daily_usage SET count=count-1 WHERE day=?", day)
-            return WorkerResponse.json({"remaining":min(3,4-count)})
-        if count >= 3: return WorkerResponse.json({"remaining":0}, status=429)
+            return WorkerResponse.json({"remaining":min(4,4-count)})
+        if count >= 4: return WorkerResponse.json({"remaining":0}, status=429)
         self.ctx.storage.sql.exec("INSERT INTO daily_usage(day,count) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET count=count+1", day)
-        return WorkerResponse.json({"remaining":2-count})
+        return WorkerResponse.json({"remaining":3-count})
 
 def _chef_js(value):
     return to_js(value, dict_converter=Object.fromEntries)
@@ -482,8 +496,21 @@ async def chef_ai_standardize(request: Request):
     else:
         source_text=str(payload.get("text") or "").strip()
         if len(source_text)<20 or len(source_text)>12000: raise HTTPException(status_code=400,detail="Inserisci una ricetta di almeno 20 caratteri e non oltre 12.000.")
+    import re
+    device_id=str(payload.get("device_id") or "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{16,100}",device_id): raise HTTPException(status_code=400,detail="Identificativo dispositivo non valido.")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    env=request.scope["env"]
+    day=datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
+    feature="chef_ai_create" if generation_request else "chef_ai_standardize"
+    quota_stub=env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
+    quota_response=await quota_stub.fetch("https://chef-limiter/feature-consume?feature="+feature+"&day="+day)
+    quota=await quota_response.json()
+    if quota_response.status==429:
+        label="creazioni" if generation_request else "standardizzazioni"
+        raise HTTPException(status_code=429,detail="Hai esaurito le 4 "+label+" giornaliere di Chef-AI.")
     try:
-        env=request.scope["env"]
         if generation_request:
             user_message=("CREAZIONE DA ZERO — non stai analizzando una fonte incompleta. Crea la ricetta richiesta in modo completo e autonomo. "
                           "Inserisci ingredienti con dosi plausibili e almeno 4 elementi in steps, ciascuno con ordine e istruzione concreta. "
@@ -533,12 +560,15 @@ async def chef_ai_standardize(request: Request):
                     raise RuntimeError("Schema ricetta incompleto.")
                 if not recipe["steps"]:
                     raise RuntimeError("Procedimento assente: il modello non ha prodotto passaggi operativi.")
-                return {"recipe":recipe}
+                return {"recipe":recipe,"remaining":int(quota.get("remaining",0))}
             except Exception as attempt_error:
                 errors.append(type(attempt_error).__name__+": "+str(attempt_error)[:300])
         raise RuntimeError("Tentativi AI falliti: "+" | ".join(errors))
-    except HTTPException: raise
+    except HTTPException:
+        await quota_stub.fetch("https://chef-limiter/feature-refund?feature="+feature+"&day="+day)
+        raise
     except Exception as exc:
+        await quota_stub.fetch("https://chef-limiter/feature-refund?feature="+feature+"&day="+day)
         print("Chef-AI standardizzazione fallita:", type(exc).__name__, str(exc)[:1000])
         raise HTTPException(status_code=503,detail="Non sono riuscito a standardizzare e verificare la ricetta. Dettaglio tecnico: "+str(exc)[:700]) from exc
 
@@ -555,7 +585,7 @@ async def chef_status(request: Request, device_id: str = Query(min_length=16, ma
     response=await stub.fetch("https://chef-limiter/status?day="+day)
     data=await response.json()
     remaining=data.get("remaining",0) if isinstance(data,dict) else getattr(data,"remaining",0)
-    return {"remaining":int(remaining),"limit":3}
+    return {"remaining":int(remaining),"limit":4}
 
 @app.post("/api/chef/ask")
 async def chef_ask(request: Request):
@@ -585,7 +615,7 @@ async def chef_ask(request: Request):
     quota_response=await stub.fetch("https://chef-limiter/consume?day="+day)
     quota=await quota_response.json()
     if quota_response.status==429:
-        raise HTTPException(status_code=429,detail="Hai raggiunto le 3 domande di oggi. Torna domani!")
+        raise HTTPException(status_code=429,detail="Hai raggiunto le 4 domande di oggi. Torna domani!")
     try:
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":450,"temperature":0.55,"chat_template_kwargs":{"enable_thinking":False}}))
         def result_field(value, key, default=None):
@@ -629,7 +659,7 @@ async def salvasoldi_status(request: Request, device_id: str = Query(min_length=
     stub = request.scope["env"].CHEF_LIMITER.get(request.scope["env"].CHEF_LIMITER.idFromName(device_id))
     response = await stub.fetch("https://chef-limiter/salvasoldi-status?section=" + mode + "&day=" + day)
     data = await response.json()
-    return {"remaining": int(data.get("remaining", 0)), "limit": 2}
+    return {"remaining": int(data.get("remaining", 0)), "limit": 4}
 
 
 @app.post("/api/salvasoldi")
@@ -718,7 +748,7 @@ async def salvasoldi(request: Request):
     quota_response = await stub.fetch("https://chef-limiter/salvasoldi-consume?section=" + mode + "&day=" + day)
     quota = await quota_response.json()
     if quota_response.status == 429:
-        raise HTTPException(status_code=429, detail=("Hai esaurito le 2 ricerche disponibili in SalvaSoldi." if mode == "create_menu" else "Hai esaurito le 2 ricerche disponibili in QuantoSpendo."))
+        raise HTTPException(status_code=429, detail=("Hai esaurito le 4 ricerche disponibili in SalvaSoldi." if mode == "create_menu" else "Hai esaurito le 4 ricerche disponibili in QuantoSpendo."))
     try:
         result = await env.AI.run(
             CHEF_MODEL,
@@ -857,7 +887,7 @@ async def salvasoldi(request: Request):
 
 @app.post("/api/archimede/ask")
 async def archimede_ask(request: Request):
-    """Generate one structured recipe suggestion; unlimited during development."""
+    """Generate one structured recipe suggestion with a server-enforced daily quota."""
     try:
         payload = await request.json()
     except Exception:
@@ -871,7 +901,17 @@ async def archimede_ask(request: Request):
         raise HTTPException(status_code=400, detail="Scegli una categoria valida.")
     if not ingredients or len(ingredients) > 1200:
         raise HTTPException(status_code=400, detail="Inserisci gli ingredienti (massimo 1200 caratteri).")
+    import re
+    device_id = str(payload.get("device_id") or "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{16,100}", device_id): raise HTTPException(status_code=400, detail="Identificativo dispositivo non valido.")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     env = request.scope["env"]
+    day = datetime.now(ZoneInfo("Europe/Rome")).date().isoformat()
+    stub = env.CHEF_LIMITER.get(env.CHEF_LIMITER.idFromName(device_id))
+    quota_response = await stub.fetch("https://chef-limiter/feature-consume?feature=archimede&day=" + day)
+    quota = await quota_response.json()
+    if quota_response.status == 429: raise HTTPException(status_code=429, detail="Hai esaurito i 4 consigli giornalieri di Archimede.")
     user_prompt = (
         "Categoria richiesta: " + category + ".\n"
         "Ingredienti dichiarati dall'utente (e soltanto questi sono disponibili): "
@@ -927,8 +967,10 @@ async def archimede_ask(request: Request):
         for key in ("available", "missing", "optional", "steps"):
             if not isinstance(recipe.get(key), list):
                 recipe[key] = []
-        return {"recipe": recipe}
+        return {"recipe": recipe, "remaining": int(quota.get("remaining", 0))}
     except Exception as exc:
+        await stub.fetch("https://chef-limiter/feature-refund?feature=archimede&day=" + day)
+        if isinstance(exc, HTTPException): raise
         raise HTTPException(status_code=503, detail="Archimede è momentaneamente occupato. Riprova tra poco.") from exc
 
 
