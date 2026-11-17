@@ -350,17 +350,23 @@ function startGuide(recipe,servings,startIndex=0){
     }catch(error){
       if(playbackId!==ttsPlaybackId)return;
       console.warn('Chef-AI neural TTS:',error);
-      try{
-        if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale del dispositivo non supportata.');
-        window.speechSynthesis.cancel();
-        const utterance=new SpeechSynthesisUtterance(text);utterance.lang='it-IT';utterance.rate=0.96;utterance.pitch=1;
-        const voices=window.speechSynthesis.getVoices();const italian=voices.find(v=>/^it(-|_)/i.test(v.lang));if(italian)utterance.voice=italian;
-        utterance.onstart=()=>say('Lettura in corso con la voce italiana del dispositivo.');
-        utterance.onend=()=>{if(typeof onComplete==='function')onComplete()};
-        utterance.onerror=event=>{say('La voce del dispositivo non è partita ('+(event.error||'errore audio')+'). Controlla volume e impostazioni audio.');if(typeof onComplete==='function')onComplete()};
-        window.speechSynthesis.speak(utterance);
-        say('Voce naturale non disponibile: provo la voce italiana del dispositivo…');
-      }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'));if(typeof onComplete==='function')onComplete()}
+      if(localStorage.getItem('chefai-android-tts-fallback-v1')==='true'){
+        try{
+          if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale del dispositivo non supportata.');
+          window.speechSynthesis.cancel();
+          const utterance=new SpeechSynthesisUtterance(text);utterance.lang='it-IT';utterance.rate=0.96;utterance.pitch=1;
+          const voices=window.speechSynthesis.getVoices();const italian=voices.find(v=>/^it(-|_)/i.test(v.lang));if(italian)utterance.voice=italian;
+          utterance.onstart=()=>say('Grok non disponibile: lettura con la voce italiana del dispositivo.');
+          utterance.onend=()=>{if(typeof onComplete==='function')onComplete()};
+          utterance.onerror=event=>{say('Anche la voce del dispositivo non è partita ('+(event.error||'errore audio')+'). Controlla volume e impostazioni audio.');if(typeof onComplete==='function')onComplete()};
+          window.speechSynthesis.speak(utterance);
+          say('Grok non disponibile: uso la voce Android di ripiego (attivabile nelle impostazioni).');
+        }catch(fallbackError){say('Audio non disponibile: '+(fallbackError.message||error.message||'errore sconosciuto'));if(typeof onComplete==='function')onComplete()}
+      }else{
+        const detail=String(error?.message||'errore sconosciuto');
+        say('Voce Grok non disponibile: '+detail+'. Puoi attivare la voce Android dalle impostazioni di Chef-AI.');
+        if(typeof onComplete==='function')onComplete();
+      }
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
