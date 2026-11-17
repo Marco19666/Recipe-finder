@@ -584,13 +584,14 @@ $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
   const extension=(file.name.split('.').pop()||'').toLowerCase();
   const imageTypes=['jpg','jpeg','png','webp','bmp','tif','tiff'];
+  const isImage=String(file.type||'').startsWith('image/')||imageTypes.includes(extension);
   const supported=['pdf','doc','docx','xls','xlsx','txt','md',...imageTypes];
   if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT, MD oppure un’immagine JPG, PNG o WEBP.');event.target.value='';return}
   if(file.size>5*1024*1024){say('Il file supera il limite di 5 MB.');event.target.value='';return}
   $('#file-text').value='';
   try{
     let extracted='';
-    if(imageTypes.includes(extension)){
+    if(isImage){
       say('Sto preparando l’OCR per '+file.name+'…');
       extracted=await recognizeImage(file);
       if(!extracted)throw Error('Non ho riconosciuto testo nella foto. Prova con un’immagine più nitida, ben illuminata e con il testo inquadrato frontalmente.');
