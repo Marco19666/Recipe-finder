@@ -1,4 +1,19 @@
 
+// Protezione touch: evita pull-to-refresh e selezione/copia del testo fuori dai campi editabili.
+(function installPageInteractionGuard(){
+  const editable = target => !!target?.closest?.('input,textarea,select,[contenteditable="true"],[contenteditable=""],[role="textbox"]');
+  document.addEventListener('copy', event => { if(!editable(event.target)) event.preventDefault(); });
+  document.addEventListener('cut', event => { if(!editable(event.target)) event.preventDefault(); });
+  document.addEventListener('contextmenu', event => { if(!editable(event.target)) event.preventDefault(); });
+  let touchStartY = 0;
+  document.addEventListener('touchstart', event => { if(event.touches?.length===1) touchStartY=event.touches[0].clientY; }, {passive:true});
+  document.addEventListener('touchmove', event => {
+    if(event.touches?.length!==1 || editable(event.target)) return;
+    const movingDown=event.touches[0].clientY>touchStartY;
+    if(movingDown && (window.scrollY<=0 || document.documentElement.scrollTop<=0)) event.preventDefault();
+  }, {passive:false});
+})();
+
 const themeToggle = document.querySelector("#theme-toggle");
 const wakeToggle = document.querySelector("#wake-toggle");
 const THEME_KEY = "recipe-finder-theme-v1";
