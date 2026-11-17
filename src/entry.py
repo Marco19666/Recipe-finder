@@ -565,8 +565,14 @@ async def chef_ai_speech(request: Request):
             raise RuntimeError("Il file audio generato è vuoto.")
         return Response(content=audio_response.content,media_type="audio/mpeg",headers={"Cache-Control":"no-store"})
     except Exception as exc:
-        print("Chef-AI sintesi vocale fallita:",type(exc).__name__,str(exc)[:500])
-        raise HTTPException(status_code=503,detail="La voce naturale non è momentaneamente disponibile.") from exc
+        import re
+        error_type = type(exc).__name__
+        error_detail = re.sub(r"https?://\\S+", "[URL nascosto]", str(exc))
+        error_detail = re.sub(r"(?i)(authorization|bearer|token|api[_ -]?key)(\\s*[:=]\\s*|\\s+)[^\\s,;]+", r"\\1\\2[omesso]", error_detail)
+        error_detail = " ".join(error_detail.split())[:220]
+        print("Chef-AI sintesi vocale fallita:", error_type, error_detail)
+        detail = "Errore Grok TTS (" + error_type + "): " + (error_detail or "nessun dettaglio fornito dal servizio")
+        raise HTTPException(status_code=503,detail=detail) from exc
 
 
 @app.get("/api/chef/status")
