@@ -604,10 +604,10 @@ async function parseUploadedDocument(parser,file,extension){
 $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
   const extension=(file.name.split('.').pop()||'').toLowerCase();
-  const imageTypes=['jpg','jpeg','png','webp','bmp','tif','tiff'];
+  const imageTypes=['jpg','jpeg','png','webp','bmp'];
   const isImage=String(file.type||'').startsWith('image/')||imageTypes.includes(extension);
   const supported=['pdf','doc','docx','xls','xlsx','txt','md',...imageTypes];
-  if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT, MD oppure un’immagine JPG, JPEG, PNG, WEBP, BMP, TIF o TIFF.');event.target.value='';return}
+  if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT, MD oppure un’immagine JPG, JPEG, PNG, WEBP o BMP.');event.target.value='';return}
   if(file.size>5*1024*1024){say('Il file supera il limite di 5 MB.');event.target.value='';return}
   $('#file-text').value='';
   try{
