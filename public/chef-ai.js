@@ -23,6 +23,7 @@ function selectMode(next){mode=next;modeChooser.hidden=true;sectionIntro.hidden=
 document.querySelectorAll('.chefai-mode').forEach(b=>b.addEventListener('click',()=>selectMode(b.dataset.mode)));
 $('#open-photo-upload')?.addEventListener('click',()=>selectMode('file'));
 const status=$('#chefai-status'),result=$('#chefai-result');
+let activeSpeechStatus=null;
 const androidVoiceFallback=$('#chefai-android-voice');
 const androidVoiceFallbackKey='chefai-android-tts-fallback-v1';
 if(androidVoiceFallback){
@@ -32,7 +33,7 @@ if(androidVoiceFallback){
     say(androidVoiceFallback.checked?'Voce Android di ripiego attivata. Verrà usata solo se Grok non è disponibile.':'Voce Android di ripiego disattivata. Userò Grok senza passare automaticamente alla voce del dispositivo.');
   });
 }
-function say(message){status.hidden=false;status.textContent=message}
+function say(message){if(status){status.hidden=false;status.textContent=message}if(activeSpeechStatus)activeSpeechStatus.textContent=message}
 function node(tag,value){const item=document.createElement(tag);if(value!==undefined)item.textContent=value;return item}
 
 // Mantiene acceso allo schermo attivo in tutte le modalità Chef-AI, non solo nella guida.
@@ -187,6 +188,7 @@ function startGuide(recipe,servings,startIndex=0){
   result.replaceChildren(node('h2','Chef Guidato'));
   result.append(node('p','Porzioni: '+servings+'. Le quantità numeriche lineari sono state ricalcolate in base alle porzioni; quantità vaghe o non scalabili restano invariate. Tempi e temperature non vengono moltiplicati.'));
   const area=node('div'),nav=node('div');area.className='chefai-step';nav.className='chefai-nav';
+  const speechStatus=node('p');speechStatus.className='chefai-player-status';speechStatus.setAttribute('role','status');speechStatus.setAttribute('aria-live','polite');activeSpeechStatus=speechStatus;
   const back=node('button','← Indietro'),next=node('button','Avanti →'),read=node('button','▶ Leggi passaggio');
   back.className='chefai-player-button chefai-player-secondary';next.className='chefai-player-button chefai-player-primary';read.className='chefai-player-button chefai-player-play';
   [back,next,read].forEach(button=>{button.type='button'});
@@ -331,10 +333,10 @@ function startGuide(recipe,servings,startIndex=0){
   }
   const speakText=async (text,onComplete)=>{
     text=expandCookingAbbreviations(text);
-    stopTTS();
-    const playbackId=ttsPlaybackId;
     say('Sto preparando la voce…');
     try{
+      stopTTS();
+      const playbackId=ttsPlaybackId;
       const AudioContextClass=window.AudioContext||window.webkitAudioContext;
       if(!AudioContextClass)throw Error('AudioContext non supportato');
       if(!ttsContext)ttsContext=new AudioContextClass();
@@ -357,7 +359,7 @@ function startGuide(recipe,servings,startIndex=0){
       ttsSource=ttsContext.createBufferSource();ttsSource.buffer=audioBuffer;ttsSource.connect(ttsContext.destination);ttsSource.onended=()=>{ttsSource=null;if(typeof onComplete==='function')onComplete()};ttsSource.start(0);
       say('Riproduzione della voce naturale in corso.');
     }catch(error){
-      if(playbackId!==ttsPlaybackId)return;
+      const playbackId=ttsPlaybackId;
       console.warn('Chef-AI neural TTS:',error);
       if(localStorage.getItem('chefai-android-tts-fallback-v1')==='true'){
         try{
@@ -389,7 +391,7 @@ function startGuide(recipe,servings,startIndex=0){
   nav.classList.add('chefai-player');
   const navigationControls=node('div');navigationControls.className='chefai-player-navigation';navigationControls.append(back,next);
   const audioControls=node('div');audioControls.className='chefai-player-audio';audioControls.append(read,readAll,stopRead);
-  nav.append(navigationControls,audioControls);
+  nav.append(navigationControls,audioControls,speechStatus);
   const voiceButton=node('button','🎙 Parla con Chef-AI');
   voiceButton.className='chefai-player-button chefai-player-voice';voiceButton.type='button';
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
