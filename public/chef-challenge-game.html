@@ -66,7 +66,7 @@ function choose(option,button){if(answered)return;answered=true;const item=daily
 $('next').addEventListener('click',()=>{if(!answered)return;if(round<4){round++;render()}else finish()});
 function finish(){$('game').classList.add('hidden');$('result').classList.remove('hidden');$('summary').textContent='Hai conquistato '+earned+' punti in questa partita. Il tuo totale è '+stats.score+' punti.';$('result-level').textContent='Livello raggiunto: '+level(stats.score)+'. '+(earned===150?'Perfetto: 5 risposte corrette!':'Ogni partita ti aiuta a migliorare!');}
 
-$('again').addEventListener('click',start);paintStats();
+$('again').addEventListener('click',()=>{daily=shuffle(bank).slice(0,5);start()});paintStats();
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
 const launch=async()=>{const pool=[...(window.RecipeGamePool.catalog||[])];try{pool.push(...await window.RecipeGamePool.load())}catch(_){}const known=new Set(bank.map(x=>x.dish.toLocaleLowerCase("it")));pool.forEach(r=>{if(known.has(r.title.toLocaleLowerCase("it")))return;const ing=(r.ingredients||[]).slice(0,5);if(ing.length<3)return;const distractors=shuffle(bank.map(x=>x.dish).concat(pool.map(x=>x.title)).filter(x=>x.toLocaleLowerCase("it")!==r.title.toLocaleLowerCase("it")));const options=[r.title,...distractors].slice(0,4);bank.push({dish:r.title,clues:["È una ricetta dell’archivio culinario di Recipe Finder.","Tra gli ingredienti trovi "+ing.slice(0,3).join(", ")+".","Il procedimento prevede "+(r.steps||[]).length+" passaggi."],options,emoji:r.emoji||"🍽️"})});daily=shuffle(bank).slice(0,5);start()};launch();
 })();
