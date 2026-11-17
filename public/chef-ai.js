@@ -537,6 +537,28 @@ function loadDocumentParser(){
   }
   return documentParserPromise;
 }
+let tesseractPromise=null;
+function loadTesseract(){
+  if(window.Tesseract?.recognize)return Promise.resolve(window.Tesseract);
+  if(!tesseractPromise){
+    tesseractPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      script.onload=()=>window.Tesseract?.recognize?resolve(window.Tesseract):reject(Error('La libreria OCR non è disponibile.'));
+      script.onerror=()=>reject(Error('Non riesco a caricare il motore OCR. Controlla la connessione e riprova.'));
+      document.head.append(script);
+    }).catch(error=>{tesseractPromise=null;throw error});
+  }
+  return tesseractPromise;
+}
+async function recognizeImage(file){
+  const tesseract=await loadTesseract();
+  const result=await tesseract.recognize(file,'ita+eng',{logger:message=>{
+    if(message.status==='recognizing text')say('Sto leggendo la foto… '+Math.round((message.progress||0)*100)+'%');
+    else if(message.status==='loading language traineddata')say('Sto preparando il riconoscimento del testo…');
+  }});
+  return String(result?.data?.text||'').trim();
+}
 async function parseUploadedDocument(parser,file,extension){
   const config={newlineDelimiter:'\n\n',extractAttachments:false,ocr:false,outputErrorToConsole:true};
   if(extension==='pdf')config.pdfWorkerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.530/build/pdf.worker.min.mjs';
@@ -561,13 +583,18 @@ async function parseUploadedDocument(parser,file,extension){
 $('#recipe-file').onchange=async event=>{
   const file=event.target.files?.[0];if(!file)return;
   const extension=(file.name.split('.').pop()||'').toLowerCase();
-  const supported=['pdf','doc','docx','xls','xlsx','txt','md'];
-  if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT o MD.');event.target.value='';return}
+  const imageTypes=['jpg','jpeg','png','webp','bmp','tif','tiff'];
+  const supported=['pdf','doc','docx','xls','xlsx','txt','md',...imageTypes];
+  if(!supported.includes(extension)){say('Formato non supportato. Scegli PDF, DOC, DOCX, XLS, XLSX, TXT, MD oppure un’immagine JPG, PNG o WEBP.');event.target.value='';return}
   if(file.size>5*1024*1024){say('Il file supera il limite di 5 MB.');event.target.value='';return}
   $('#file-text').value='';
   try{
     let extracted='';
-    if(extension==='txt'||extension==='md'){
+    if(imageTypes.includes(extension)){
+      say('Sto preparando l’OCR per '+file.name+'…');
+      extracted=await recognizeImage(file);
+      if(!extracted)throw Error('Non ho riconosciuto testo nella foto. Prova con un’immagine più nitida, ben illuminata e con il testo inquadrato frontalmente.');
+    }else if(extension==='txt'||extension==='md'){
       say('Sto leggendo il file di testo…');
       extracted=await file.text();
     }else{
@@ -576,7 +603,7 @@ $('#recipe-file').onchange=async event=>{
       extracted=await parseUploadedDocument(parser,file,extension);
     }
     extracted=String(extracted||'').trim();
-    if(!extracted)throw Error('Il file è stato aperto, ma non contiene testo estraibile. Se il PDF è una scansione o una foto, occorre prima applicare l’OCR oppure usare un PDF con testo selezionabile.');
+    if(!extracted)throw Error('Il file è stato aperto, ma non contiene testo estraibile. Per i PDF scansionati, carica la pagina come immagine oppure usa un PDF con testo selezionabile.');
     if(extracted.length>80000)throw Error('Il documento contiene troppo testo (oltre 80.000 caratteri). Carica una versione più breve, solo con la ricetta.');
     $('#file-text').value=extracted;
     say('✓ '+file.name+' caricato: estratti '+extracted.length.toLocaleString('it-IT')+' caratteri. Il testo è visibile nel riquadro qui sotto; premi “Controlla la ricetta” per continuare.');
