@@ -56,7 +56,7 @@ function check(){if(locked)return;locked=true;const recipe=current[round],rows=[
 function advance(){if(!locked)return;round++;if(round>=5){finish();return}load()}
 function finish(){if(score>best){best=score;localStorage.setItem(bestKey,String(best))}paint();$("game").classList.add("hidden");$("result").classList.remove("hidden");$("summary").textContent="Hai totalizzato "+score+" punti su 250 possibili in 5 manche. Record personale: "+best+" punti.";$("resultLevel").textContent="Il tuo livello: "+level(score)+"."}
 $("check").addEventListener("click",check);$("next").addEventListener("click",advance);$("again").addEventListener("click",()=>{current=shuffle(recipes).slice(0,5);start()});
-const launch=async()=>{try{const extra=await window.RecipeGamePool.load();extra.forEach(r=>{if(!recipes.some(x=>x.title.toLocaleLowerCase('it')===r.title.toLocaleLowerCase('it')))recipes.push({title:r.title,emoji:r.emoji,ingredients:r.ingredients,steps:r.steps})})}catch(_){}current=shuffle(recipes).slice(0,5);start();paint()};launch();
+const launch=async()=>{const add=list=>list.forEach(r=>{if(r.ingredients?.length>=3&&r.steps?.length>=4&&!recipes.some(x=>x.title.toLocaleLowerCase("it")===r.title.toLocaleLowerCase("it")))recipes.push({title:r.title,emoji:r.emoji,ingredients:r.ingredients,steps:r.steps})});add(window.RecipeGamePool.catalog||[]);try{add(await window.RecipeGamePool.load())}catch(_){}current=shuffle(recipes).slice(0,5);start();paint()};launch();
 })();
 </script>
 </body></html>
