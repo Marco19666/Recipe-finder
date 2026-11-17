@@ -53,7 +53,8 @@ const bank=[
 {dish:"Torta di mele",emoji:"🍎",ingredients:["mele","farina","uova","burro","zucchero","lievito"]},
 {dish:"Pasta alla norma",emoji:"🍆",ingredients:["pasta","melanzane","pomodori","ricotta salata","basilico"]}
 ];
-const $=id=>document.getElementById(id),bestKey="recipe-finder-ingredient-riddle-best-v1";
+const $=id=>document.getElementById(id),bestKey="recipe-finder-ingredient-riddle-best-v1",resetKey="recipe-finder-ingredient-riddle-best-reset-v1";
+if(localStorage.getItem(resetKey)!=="done"){localStorage.removeItem(bestKey);localStorage.setItem(resetKey,"done")}
 let round=0,score=0,best=Number(localStorage.getItem(bestKey)||0),order=[],target=null,options=[],revealed=0,earned=0,locked=false;
 $("best").textContent=best;
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
