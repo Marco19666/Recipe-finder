@@ -56,9 +56,7 @@ const bank=[
 const $=id=>document.getElementById(id),today=new Date().toLocaleDateString('sv-SE');
 const storageKey='chef-challenge-stats-v1',dailyKey='chef-challenge-daily-v1';
 let stats={score:0,streak:0,best:0};try{stats={...stats,...JSON.parse(localStorage.getItem(storageKey)||'{}')}}catch{}
-let daily;try{daily=JSON.parse(localStorage.getItem(dailyKey)||'null')}catch{}
-if(!daily||daily.date!==today){const seed=Number(today.replaceAll('-',''));let n=seed;const rand=()=>{n=(n*1664525+1013904223)>>>0;return n/4294967296};const pool=[...bank];daily=[];while(daily.length<5&&pool.length){daily.push(pool.splice(Math.floor(rand()*pool.length),1)[0])}localStorage.setItem(dailyKey,JSON.stringify({date:today,items:daily.map(x=>x.dish)}));}
-else {const names=daily.items||[];daily=names.map(name=>bank.find(x=>x.dish===name)).filter(Boolean);if(daily.length!==5)daily=bank.slice(0,5)}
+let daily=[];
 let round=0,earned=0,streak=0,answered=false,order=[];
 function level(points){return points>=500?'Master Chef':points>=250?'Chef':points>=100?'Cuoco':points>=40?'Aiuto cuoco':'Apprendista'}
 function paintStats(){$('score').textContent=stats.score;$('streak').textContent=stats.best;$('level').textContent=level(stats.score)}
@@ -69,7 +67,8 @@ $('next').addEventListener('click',()=>{if(!answered)return;if(round<4){round++;
 function finish(){$('game').classList.add('hidden');$('result').classList.remove('hidden');$('summary').textContent='Hai conquistato '+earned+' punti in questa partita. Il tuo totale è '+stats.score+' punti.';$('result-level').textContent='Livello raggiunto: '+level(stats.score)+'. '+(earned===150?'Perfetto: 5 risposte corrette!':'Ogni partita ti aiuta a migliorare!');}
 
 $('again').addEventListener('click',start);paintStats();
-const launch=async()=>{try{const extra=await window.RecipeGamePool.load();const known=new Set(bank.map(x=>x.dish.toLocaleLowerCase('it')));extra.forEach(r=>{if(known.has(r.title.toLocaleLowerCase('it')))return;const ing=r.ingredients.slice(0,5);if(ing.length<3)return;bank.push({dish:r.title,clues:['È una ricetta presente tra le proposte recenti di Recipe Finder.','Tra gli ingredienti trovi '+ing.slice(0,3).join(', ')+'.','La preparazione comprende '+r.steps.length+' passaggi.'],options:[],emoji:r.emoji});});const dynamic=bank.filter(x=>!known.has(x.dish.toLocaleLowerCase('it')));dynamic.forEach(x=>x.options=[x.dish,...bank.filter(y=>y!==x).map(y=>y.dish)].sort(()=>Math.random()-.5).slice(0,4));if(dynamic.length){daily=[...daily,...shuffle(dynamic)].slice(0,5)}}catch(_){}start()};launch();
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+const launch=async()=>{const pool=[...(window.RecipeGamePool.catalog||[])];try{pool.push(...await window.RecipeGamePool.load())}catch(_){}const known=new Set(bank.map(x=>x.dish.toLocaleLowerCase("it")));pool.forEach(r=>{if(known.has(r.title.toLocaleLowerCase("it")))return;const ing=(r.ingredients||[]).slice(0,5);if(ing.length<3)return;const distractors=shuffle(bank.map(x=>x.dish).concat(pool.map(x=>x.title)).filter(x=>x.toLocaleLowerCase("it")!==r.title.toLocaleLowerCase("it")));const options=[r.title,...distractors].slice(0,4);bank.push({dish:r.title,clues:["È una ricetta dell’archivio culinario di Recipe Finder.","Tra gli ingredienti trovi "+ing.slice(0,3).join(", ")+".","Il procedimento prevede "+(r.steps||[]).length+" passaggi."],options,emoji:r.emoji||"🍽️"})});daily=shuffle(bank).slice(0,5);start()};launch();
 })();
 </script>
 </body></html>
