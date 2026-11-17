@@ -23,9 +23,9 @@ main{max-width:900px;margin:0 auto;padding:26px 18px 56px}.hero{text-align:cente
 <header><span class="brand">🍳 Recipe Finder</span><a href="/">← Recipe Finder</a></header>
 <main>
 <section class="hero"><div class="mascot" aria-hidden="true">👨‍🍳</div><h1>Chef Challenge</h1><p>Metti alla prova il tuo intuito culinario! Ascolta gli indizi, indovina il piatto e conquista punti per diventare un vero Master Chef.</p></section>
-<div class="stats"><div class="stat"><strong id="score">0</strong><span>Punti di oggi</span></div><div class="stat"><strong id="streak">0</strong><span>Risposte consecutive</span></div><div class="stat"><strong id="level">Apprendista</strong><span>Il tuo livello</span></div></div>
+<div class="stats"><div class="stat"><strong id="score">0</strong><span>Punti partita</span></div><div class="stat"><strong id="best">0</strong><span>Record personale</span></div><div class="stat"><strong id="level">Apprendista</strong><span>Il tuo livello</span></div></div>
 <section class="panel" id="game">
-<div class="topline"><span class="pill" id="round">Sfida 1 di 5</span><span class="pill" id="daily">⭐ Sfida quotidiana</span></div>
+<div class="topline"><span class="pill" id="round">Sfida 1 di 5</span><span class="pill" id="value">50 punti disponibili</span></div>
 <div class="progress"><i id="bar"></i></div>
 <div class="question"><div class="dishmark">🍽️</div><h2>Indovina il piatto!</h2><p id="intro">Leggi i tre indizi e scegli la risposta corretta.</p></div>
 <div class="clues" id="clues"></div>
@@ -34,7 +34,7 @@ main{max-width:900px;margin:0 auto;padding:26px 18px 56px}.hero{text-align:cente
 <div class="actions"><button class="primary" id="next" disabled>Prossima sfida →</button></div>
 </section>
 <section class="panel hidden" id="result"><div class="question"><div class="dishmark">🏆</div><h2>Sfida completata!</h2><p id="summary"></p><p id="result-level"></p></div><div class="actions"><button class="primary" id="again">Gioca ancora</button><a class="secondary" href="/chef-challenge.html" style="text-decoration:none;display:inline-flex;align-items:center">Torna alla sala giochi</a></div></section>
-<p class="footer-note">Le tue statistiche vengono salvate su questo dispositivo. Una nuova sfida quotidiana ogni giorno!</p>
+<p class="footer-note">5 manche per partita, 50 punti per ogni risposta corretta. Il record personale viene salvato su questo dispositivo.</p>
 </main>
 <script src="/game-recipe-pool.js?v=4"></script>
 <script>
@@ -54,17 +54,16 @@ const bank=[
 {dish:"Polenta",clues:["È un piatto tradizionale diffuso nel Nord Italia.","Si prepara cuocendo lentamente una farina in acqua.","La versione più comune utilizza farina di mais."],options:["Polenta","Purè","Gnocchi","Cous cous"],emoji:"🌽"}
 ];
 const $=id=>document.getElementById(id),today=new Date().toLocaleDateString('sv-SE');
-const storageKey='chef-challenge-stats-v1',dailyKey='chef-challenge-daily-v1';
-let stats={score:0,streak:0,best:0};try{stats={...stats,...JSON.parse(localStorage.getItem(storageKey)||'{}')}}catch{}
-let daily=[];
-let round=0,earned=0,streak=0,answered=false,order=[];
-function level(points){return points>=500?'Master Chef':points>=250?'Chef':points>=100?'Cuoco':points>=40?'Aiuto cuoco':'Apprendista'}
-function paintStats(){$('score').textContent=stats.score;$('streak').textContent=stats.best;$('level').textContent=level(stats.score)}
-function start(){round=0;earned=0;streak=0;answered=false;$('game').classList.remove('hidden');$('result').classList.add('hidden');render()}
-function render(){const item=daily[round];answered=false;$('round').textContent='Sfida '+(round+1)+' di 5';$('bar').style.width=(round/5*100)+'%';$('intro').textContent='Leggi gli indizi e scegli la risposta corretta.';$('clues').innerHTML=item.clues.map((c,i)=>'<div class="clue"><b>Indizio '+(i+1)+'</b>'+c+'</div>').join('');order=[...item.options].sort(()=>Math.random()-.5);$('answers').innerHTML='';order.forEach(option=>{const b=document.createElement('button');b.className='answer';b.textContent=option;b.addEventListener('click',()=>choose(option,b));$('answers').append(b)});$('feedback').className='feedback';$('feedback').textContent='';$('next').disabled=true;$('next').textContent=round===4?'Vedi il risultato →':'Prossima sfida →';}
-function choose(option,button){if(answered)return;answered=true;const item=daily[round],correct=option===item.dish;[...$('answers').children].forEach(b=>{b.disabled=true;if(b.textContent===item.dish)b.classList.add('correct')});if(!correct)button.classList.add('wrong');const points=correct?30:0;earned+=points;stats.score+=points;streak=correct?streak+1:0;stats.best=Math.max(stats.best,streak);localStorage.setItem(storageKey,JSON.stringify(stats));paintStats();$('feedback').className='feedback show';$('feedback').innerHTML=correct?'🎉 <b>Esatto! +30 punti.</b> Hai indovinato '+item.dish+'.':'🙂 Non proprio! La risposta era <b>'+item.dish+'</b>. Continua, la prossima è tua!';$('next').disabled=false;$('bar').style.width=((round+1)/5*100)+'%';}
+const bestKey='chef-challenge-dish-best-v1';
+let best=Number(localStorage.getItem(bestKey)||0),daily=[];
+let round=0,score=0,answered=false,order=[];
+function level(points){return points>=200?'Master Chef':points>=150?'Chef':points>=100?'Cuoco':points>=50?'Aiuto cuoco':'Apprendista'}
+function paintStats(){$('score').textContent=score;$('best').textContent=best;$('level').textContent=level(score)}
+function start(){round=0;score=0;answered=false;$('game').classList.remove('hidden');$('result').classList.add('hidden');paintStats();render()}
+function render(){const item=daily[round];answered=false;$('round').textContent='Manche '+(round+1)+' di 5';$('value').textContent='50 punti disponibili';$('bar').style.width=(round/5*100)+'%';$('intro').textContent='Leggi gli indizi e scegli la risposta corretta.';$('clues').innerHTML=item.clues.map((c,i)=>'<div class="clue"><b>Indizio '+(i+1)+'</b>'+c+'</div>').join('');order=[...item.options].sort(()=>Math.random()-.5);$('answers').innerHTML='';order.forEach(option=>{const b=document.createElement('button');b.className='answer';b.textContent=option;b.addEventListener('click',()=>choose(option,b));$('answers').append(b)});$('feedback').className='feedback';$('feedback').textContent='';$('next').disabled=true;$('next').textContent=round===4?'Vedi il risultato →':'Prossima sfida →';}
+function choose(option,button){if(answered)return;answered=true;const item=daily[round],correct=option===item.dish;[...$('answers').children].forEach(b=>{b.disabled=true;if(b.textContent===item.dish)b.classList.add('correct')});if(!correct)button.classList.add('wrong');const points=correct?50:0;score+=points;paintStats();$('feedback').className='feedback show';$('feedback').innerHTML=correct?'🎉 <b>Esatto! +50 punti.</b> Hai indovinato '+item.dish+'.':'🙂 Non proprio! La risposta era <b>'+item.dish+'</b>. Continua, la prossima è tua!';$('next').disabled=false;$('bar').style.width=((round+1)/5*100)+'%';}
 $('next').addEventListener('click',()=>{if(!answered)return;if(round<4){round++;render()}else finish()});
-function finish(){$('game').classList.add('hidden');$('result').classList.remove('hidden');$('summary').textContent='Hai conquistato '+earned+' punti in questa partita. Il tuo totale è '+stats.score+' punti.';$('result-level').textContent='Livello raggiunto: '+level(stats.score)+'. '+(earned===150?'Perfetto: 5 risposte corrette!':'Ogni partita ti aiuta a migliorare!');}
+function finish(){if(score>best){best=score;localStorage.setItem(bestKey,String(best))}paintStats();$('game').classList.add('hidden');$('result').classList.remove('hidden');$('bar').style.width='100%';$('summary').textContent='Hai totalizzato '+score+' punti su 250 possibili in 5 manche. Record personale: '+best+' punti.';$('result-level').textContent='Il tuo livello: '+level(score)+'. '+(score===250?'Partita perfetta!':'Prova a migliorare il tuo record!');}
 
 $('again').addEventListener('click',()=>{daily=shuffle(bank).slice(0,5);start()});paintStats();
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
