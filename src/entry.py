@@ -403,13 +403,13 @@ class ChefDailyLimiter(DurableObject):
         if not day: return WorkerResponse.json({"error":"missing day"}, status=400)
         row = self.ctx.storage.sql.exec("SELECT COALESCE((SELECT count FROM daily_usage WHERE day = ?), 0) AS count", day).one()
         count = int(row.count)
-        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,5-count)})
+        if parsed.path == "/status": return WorkerResponse.json({"remaining":max(0,3-count),"limit":3})
         if parsed.path == "/refund":
             if count > 0: self.ctx.storage.sql.exec("UPDATE daily_usage SET count=count-1 WHERE day=?", day)
-            return WorkerResponse.json({"remaining":min(5,6-count)})
-        if count >= 5: return WorkerResponse.json({"remaining":0}, status=429)
+            return WorkerResponse.json({"remaining":min(3,4-count)})
+        if count >= 3: return WorkerResponse.json({"remaining":0}, status=429)
         self.ctx.storage.sql.exec("INSERT INTO daily_usage(day,count) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET count=count+1", day)
-        return WorkerResponse.json({"remaining":4-count})
+        return WorkerResponse.json({"remaining":2-count})
 
 def _chef_js(value):
     return to_js(value, dict_converter=Object.fromEntries)
@@ -555,7 +555,7 @@ async def chef_status(request: Request, device_id: str = Query(min_length=16, ma
     response=await stub.fetch("https://chef-limiter/status?day="+day)
     data=await response.json()
     remaining=data.get("remaining",0) if isinstance(data,dict) else getattr(data,"remaining",0)
-    return {"remaining":int(remaining),"limit":5}
+    return {"remaining":int(remaining),"limit":3}
 
 @app.post("/api/chef/ask")
 async def chef_ask(request: Request):
@@ -585,7 +585,7 @@ async def chef_ask(request: Request):
     quota_response=await stub.fetch("https://chef-limiter/consume?day="+day)
     quota=await quota_response.json()
     if quota_response.status==429:
-        raise HTTPException(status_code=429,detail="Hai raggiunto le 5 domande di oggi. Torna domani!")
+        raise HTTPException(status_code=429,detail="Hai raggiunto le 3 domande di oggi. Torna domani!")
     try:
         result=await env.AI.run(CHEF_MODEL,_chef_js({"messages":[{"role":"system","content":CHEF_SYSTEM_PROMPT}]+clean,"max_tokens":450,"temperature":0.55,"chat_template_kwargs":{"enable_thinking":False}}))
         def result_field(value, key, default=None):
