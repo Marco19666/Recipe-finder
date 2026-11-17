@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#183b32">
+<title>Chef Challenge – Recipe Finder</title>
+<style>
+:root{color-scheme:light;--ink:#19382f;--muted:#64766d;--cream:#fffaf0;--green:#1d5946;--lime:#dff1b8;--orange:#f5a64a}
+*{box-sizing:border-box}html{overscroll-behavior-y:none}body{margin:0;background:linear-gradient(145deg,#f8f3e7,#eaf2e6);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+header{background:#183b32;color:#fff;padding:16px max(20px,calc((100% - 980px)/2));display:flex;align-items:center;justify-content:space-between;gap:14px}header a{color:#e4f0d7;text-decoration:none;font-weight:650}.brand{font-weight:850;letter-spacing:.2px}
+main{max-width:900px;margin:0 auto;padding:26px 18px 56px}.hero{text-align:center;padding:18px 10px 24px}.mascot{font-size:64px;filter:drop-shadow(0 6px 5px #0002)}h1{font-size:clamp(2rem,6vw,3.2rem);margin:4px 0;color:#173d31}.hero p{color:var(--muted);margin:8px auto;max-width:560px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 22px}.stat,.panel{background:#fffdf8;border:1px solid #e5e7d9;border-radius:18px;box-shadow:0 8px 24px #1a3b2a0b}.stat{text-align:center;padding:13px 8px}.stat strong{display:block;font-size:1.45rem}.stat span{font-size:.8rem;color:var(--muted)}
+.panel{padding:clamp(18px,4vw,30px)}.topline{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.pill{background:#e9f2dc;border-radius:99px;padding:7px 12px;font-size:.82rem;font-weight:750}.progress{height:9px;background:#e9eadf;border-radius:99px;overflow:hidden;margin:17px 0 22px}.progress i{display:block;height:100%;background:#70a65b;width:0;transition:width .25s}
+.question{text-align:center}.question .dishmark{font-size:46px}.question h2{font-size:clamp(1.35rem,4vw,2rem);margin:8px 0 5px}.question p{color:var(--muted);margin:0 0 18px}.clues{display:grid;gap:9px;margin:18px 0}.clue{background:#f6f4e9;border-radius:12px;padding:12px 14px;text-align:left}.clue b{color:#47734c;margin-right:7px}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answer{border:2px solid #dfe5d7;border-radius:13px;background:#fff;padding:14px 12px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;min-height:58px}.answer:hover:not(:disabled){border-color:#79a66b;background:#f6faef}.answer:disabled{cursor:default;opacity:1}.answer.correct{border-color:#57935a;background:#e5f4df}.answer.wrong{border-color:#d77b65;background:#fff0e9}
+.feedback{margin:15px 0 0;padding:13px;border-radius:12px;background:#f5f2e7;display:none}.feedback.show{display:block}.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}button.primary,button.secondary{border:0;border-radius:99px;padding:13px 22px;font:inherit;font-weight:800;cursor:pointer}.primary{background:#1d5946;color:#fff}.secondary{background:#e8efdf;color:#244936}.primary:disabled{opacity:.45;cursor:not-allowed}
+.footer-note{text-align:center;color:var(--muted);font-size:.82rem;margin:18px 0}.hidden{display:none!important}
+@media(max-width:520px){.answers{grid-template-columns:1fr}.stats{gap:7px}.stat{padding:10px 4px}.stat strong{font-size:1.2rem}header{padding:13px 16px}}
+</style>
+</head>
+<body>
+<header><span class="brand">🍳 Recipe Finder</span><a href="/">← Torna a Recipe Finder</a></header>
+<main>
+<section class="hero"><div class="mascot" aria-hidden="true">👨‍🍳</div><h1>Chef Challenge</h1><p>Metti alla prova il tuo intuito culinario! Ascolta gli indizi, indovina il piatto e conquista punti per diventare un vero Master Chef.</p></section>
+<div class="stats"><div class="stat"><strong id="score">0</strong><span>Punti di oggi</span></div><div class="stat"><strong id="streak">0</strong><span>Risposte consecutive</span></div><div class="stat"><strong id="level">Apprendista</strong><span>Il tuo livello</span></div></div>
+<section class="panel" id="game">
+<div class="topline"><span class="pill" id="round">Sfida 1 di 5</span><span class="pill" id="daily">⭐ Sfida quotidiana</span></div>
+<div class="progress"><i id="bar"></i></div>
+<div class="question"><div class="dishmark">🍽️</div><h2>Indovina il piatto!</h2><p id="intro">Leggi i tre indizi e scegli la risposta corretta.</p></div>
+<div class="clues" id="clues"></div>
+<div class="answers" id="answers"></div>
+<div class="feedback" id="feedback" aria-live="polite"></div>
+<div class="actions"><button class="primary" id="next" disabled>Prossima sfida →</button></div>
+</section>
+<section class="panel hidden" id="result"><div class="question"><div class="dishmark">🏆</div><h2>Sfida completata!</h2><p id="summary"></p><p id="result-level"></p></div><div class="actions"><button class="primary" id="again">Gioca ancora</button><a class="secondary" href="/" style="text-decoration:none;display:inline-flex;align-items:center">Torna a Recipe Finder</a></div></section>
+<p class="footer-note">Le tue statistiche vengono salvate su questo dispositivo. Una nuova sfida quotidiana ogni giorno!</p>
+</main>
+<script>
+(()=>{
+const bank=[
+{dish:"Tiramisù",clues:["È un dolce al cucchiaio italiano.","Si prepara con savoiardi, caffè e mascarpone.","La superficie è spolverata di cacao."],options:["Panna cotta","Tiramisù","Zuppa inglese","Semifreddo"],emoji:"☕"},
+{dish:"Carbonara",clues:["È un primo piatto della tradizione romana.","Gli ingredienti tipici includono guanciale, uova e pecorino.","La ricetta tradizionale non prevede panna."],options:["Amatriciana","Cacio e pepe","Carbonara","Gricia"],emoji:"🍝"},
+{dish:"Parmigiana di melanzane",clues:["È un piatto cotto al forno.","Gli strati sono alternati con salsa di pomodoro e formaggio.","L'ingrediente protagonista è una verdura viola."],options:["Lasagna","Parmigiana di melanzane","Caponata","Pasta alla norma"],emoji:"🍆"},
+{dish:"Pesto alla genovese",clues:["È una salsa tipica della Liguria.","Tra gli ingredienti ci sono basilico, pinoli e formaggio.","Tradizionalmente si prepara con mortaio."],options:["Salsa verde","Pesto alla genovese","Ragù","Salsa di noci"],emoji:"🌿"},
+{dish:"Risotto alla milanese",clues:["È un primo piatto cremoso del Nord Italia.","Il suo colore dorato è dato da una spezia preziosa.","Si prepara tradizionalmente con zafferano."],options:["Risi e bisi","Risotto ai funghi","Risotto alla milanese","Paella"],emoji:"🍚"},
+{dish:"Arancini",clues:["Sono una specialità siciliana.","Hanno un ripieno racchiuso nel riso.","Vengono impanati e fritti."],options:["Supplì","Arancini","Olive ascolane","Panzerotti"],emoji:"🍊"},
+{dish:"Panzanella",clues:["È un piatto estivo del Centro Italia.","Utilizza pane raffermo e verdure fresche.","Pomodoro, cipolla e aceto sono ingredienti frequenti."],options:["Panzanella","Farinata","Pappa al pomodoro","Insalata caprese"],emoji:"🍅"},
+{dish:"Orecchiette alle cime di rapa",clues:["È un piatto tipico pugliese.","La pasta ha una forma simile a piccole orecchie.","La verdura protagonista ha un gusto leggermente amarognolo."],options:["Pasta e ceci","Orecchiette alle cime di rapa"," trofie al pesto","Pasta alla norma"],emoji:"🥦"},
+{dish:"Minestrone",clues:["È una preparazione a base di verdure.","Può contenere legumi e pasta o riso.","Si serve generalmente caldo, come zuppa."],options:["Gazpacho","Minestrone","Vellutata di zucca","Ribollita"],emoji:"🥣"},
+{dish:"Cannoli siciliani",clues:["Sono dolci tipici della Sicilia.","Hanno un guscio croccante fritto.","Il ripieno classico è a base di ricotta."],options:["Sfogliatelle","Cassatine","Cannoli siciliani","Cantucci"],emoji:"🍰"},
+{dish:"Focaccia",clues:["È un prodotto da forno lievitato.","La versione ligure è condita con olio e sale.","La superficie presenta spesso piccoli avvallamenti."],options:["Piadina","Focaccia","Grissini","Pane carasau"],emoji:"🥖"},
+{dish:"Polenta",clues:["È un piatto tradizionale diffuso nel Nord Italia.","Si prepara cuocendo lentamente una farina in acqua.","La versione più comune utilizza farina di mais."],options:["Polenta","Purè","Gnocchi","Cous cous"],emoji:"🌽"}
+];
+const $=id=>document.getElementById(id),today=new Date().toLocaleDateString('sv-SE');
+const storageKey='chef-challenge-stats-v1',dailyKey='chef-challenge-daily-v1';
+let stats={score:0,streak:0,best:0};try{stats={...stats,...JSON.parse(localStorage.getItem(storageKey)||'{}')}}catch{}
+let daily;try{daily=JSON.parse(localStorage.getItem(dailyKey)||'null')}catch{}
+if(!daily||daily.date!==today){const seed=Number(today.replaceAll('-',''));let n=seed;const rand=()=>{n=(n*1664525+1013904223)>>>0;return n/4294967296};const pool=[...bank];daily=[];while(daily.length<5&&pool.length){daily.push(pool.splice(Math.floor(rand()*pool.length),1)[0])}localStorage.setItem(dailyKey,JSON.stringify({date:today,items:daily.map(x=>x.dish)}));}
+else {const names=daily.items||[];daily=names.map(name=>bank.find(x=>x.dish===name)).filter(Boolean);if(daily.length!==5)daily=bank.slice(0,5)}
+let round=0,earned=0,streak=0,answered=false,order=[];
+function level(points){return points>=500?'Master Chef':points>=250?'Chef':points>=100?'Cuoco':points>=40?'Aiuto cuoco':'Apprendista'}
+function paintStats(){$('score').textContent=stats.score;$('streak').textContent=stats.best;$('level').textContent=level(stats.score)}
+function start(){round=0;earned=0;streak=0;answered=false;$('game').classList.remove('hidden');$('result').classList.add('hidden');render()}
+function render(){const item=daily[round];answered=false;$('round').textContent='Sfida '+(round+1)+' di 5';$('bar').style.width=(round/5*100)+'%';$('intro').textContent='Leggi gli indizi e scegli la risposta corretta.';$('clues').innerHTML=item.clues.map((c,i)=>'<div class="clue"><b>Indizio '+(i+1)+'</b>'+c+'</div>').join('');order=[...item.options].sort(()=>Math.random()-.5);$('answers').innerHTML='';order.forEach(option=>{const b=document.createElement('button');b.className='answer';b.textContent=option;b.addEventListener('click',()=>choose(option,b));$('answers').append(b)});$('feedback').className='feedback';$('feedback').textContent='';$('next').disabled=true;$('next').textContent=round===4?'Vedi il risultato →':'Prossima sfida →';}
+function choose(option,button){if(answered)return;answered=true;const item=daily[round],correct=option===item.dish;[...$('answers').children].forEach(b=>{b.disabled=true;if(b.textContent===item.dish)b.classList.add('correct')});if(!correct)button.classList.add('wrong');const points=correct?30:0;earned+=points;stats.score+=points;streak=correct?streak+1:0;stats.best=Math.max(stats.best,streak);localStorage.setItem(storageKey,JSON.stringify(stats));paintStats();$('feedback').className='feedback show';$('feedback').innerHTML=correct?'🎉 <b>Esatto! +30 punti.</b> Hai indovinato '+item.dish+'.':'🙂 Non proprio! La risposta era <b>'+item.dish+'</b>. Continua, la prossima è tua!';$('next').disabled=false;$('bar').style.width=((round+1)/5*100)+'%';}
+$('next').addEventListener('click',()=>{if(!answered)return;if(round<4){round++;render()}else finish()});
+function finish(){$('game').classList.add('hidden');$('result').classList.remove('hidden');$('summary').textContent='Hai conquistato '+earned+' punti in questa partita. Il tuo totale è '+stats.score+' punti.';$('result-level').textContent='Livello raggiunto: '+level(stats.score)+'. '+(earned===150?'Perfetto: 5 risposte corrette!':'Ogni partita ti aiuta a migliorare!');}
+$('again').addEventListener('click',start);paintStats();start();
+})();
+</script>
+</body></html>
