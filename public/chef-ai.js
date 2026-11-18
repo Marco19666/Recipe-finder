@@ -370,32 +370,6 @@ function startGuide(recipe,servings,startIndex=0){
       if(typeof onComplete==='function')onComplete();
     }
   };
-          const timeout=setTimeout(finish,2500);
-          window.speechSynthesis.addEventListener?.('voiceschanged',finish,{once:true});
-        });
-      }
-      if(playbackId!==ttsPlaybackId)return;
-      // Come nell'esempio ufficiale SpeakIt: imposta il filtro italiano e
-      // usa la firma esatta della voce restituita dal browser.
-      Speakit.languageFilter='it-IT';
-      const italian=voices.filter(voice=>String(voice.lang||'').toLowerCase().startsWith('it'));
-      const voiceList=italian.map(voice=>voice.name+' ['+voice.lang+', '+(voice.localService===false?'online': 'dispositivo')+']');
-      const preferred=italian.find(voice=>voice.localService===false)
-        ||italian.find(voice=>/online|cloud|natural/i.test(voice.name||''));
-      if(!preferred){
-        const detail=voiceList.length?'Voci italiane trovate: '+voiceList.join('; '):'Chrome non ha restituito voci italiane.';
-        say('Nessuna voce italiana online rilevata. '+detail);
-        return;
-      }
-      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+' (voce online). Voci italiane: '+voiceList.join('; '));
-      await Speakit.readText(text,'it-IT',preferred.name);
-      if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
-    }catch(speakitError){
-      if(playbackId!==ttsPlaybackId)return;
-      say('SpeakIt.js non è riuscito ad avviare la lettura. Nessun motore alternativo è stato avviato. '+(speakitError?.message||'Riprova.'));
-      if(typeof onComplete==='function')onComplete();
-    }
-  };
   read.onclick=()=>{speechStatus.textContent='Pulsante premuto: ricerca delle voci italiane…';speakText(steps[index].instruction);};
   const readAll=node('button','▤ Leggi ricetta');readAll.className='chefai-player-button chefai-player-secondary';readAll.type='button';
   readAll.onclick=()=>{
