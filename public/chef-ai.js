@@ -328,7 +328,7 @@ function startGuide(recipe,servings,startIndex=0){
   };
   const speakText=async (text,onComplete)=>{
     text=expandCookingAbbreviations(text);
-    say('Avvio della sintesi vocale…');
+    say('Avvio della sintesi vocale del dispositivo…');
     stopTTS();
     const playbackId=ttsPlaybackId;
     if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance){
@@ -337,13 +337,6 @@ function startGuide(recipe,servings,startIndex=0){
       return;
     }
     try{
-      // SpeakIt è l'unico gestore della lettura: nessun fallback nativo separato.
-      const Speakit=await loadSpeakit();
-      if(playbackId!==ttsPlaybackId)return;
-      Speakit.utteranceRate=0.96;
-      Speakit.utterancePitch=1;
-      Speakit.utteranceVolume=1;
-      // Legge l'elenco live del browser: la cache interna di SpeakIt può essere obsoleta.
       let voices=window.speechSynthesis.getVoices();
       if(!voices.length){
         voices=await new Promise(resolve=>{
@@ -355,6 +348,28 @@ function startGuide(recipe,servings,startIndex=0){
             clearTimeout(timeout);
             resolve(window.speechSynthesis.getVoices());
           };
+          const timeout=setTimeout(finish,2500);
+          window.speechSynthesis.addEventListener?.('voiceschanged',finish,{once:true});
+        });
+      }
+      if(playbackId!==ttsPlaybackId)return;
+      const italian=voices.filter(voice=>String(voice.lang||'').toLowerCase().startsWith('it'));
+      const utterance=new SpeechSynthesisUtterance(text);
+      utterance.lang='it-IT';
+      utterance.rate=0.96;
+      utterance.pitch=1;
+      utterance.volume=1;
+      if(italian.length)utterance.voice=italian[0];
+      say('Chef-AI sta leggendo con la voce del dispositivo'+(italian.length?' · '+italian[0].name:''));
+      utterance.onend=()=>{if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete()};
+      utterance.onerror=event=>{if(playbackId===ttsPlaybackId)say('La sintesi vocale del dispositivo non è riuscita. '+(event.error||'Riprova.'))};
+      window.speechSynthesis.speak(utterance);
+    }catch(error){
+      if(playbackId!==ttsPlaybackId)return;
+      say('Impossibile avviare la sintesi vocale del dispositivo. '+(error?.message||'Riprova.'));
+      if(typeof onComplete==='function')onComplete();
+    }
+  };
           const timeout=setTimeout(finish,2500);
           window.speechSynthesis.addEventListener?.('voiceschanged',finish,{once:true});
         });
