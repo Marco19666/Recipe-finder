@@ -360,11 +360,19 @@ function startGuide(recipe,servings,startIndex=0){
         });
       }
       if(playbackId!==ttsPlaybackId)return;
+      // Come nell'esempio ufficiale SpeakIt: imposta il filtro italiano e
+      // usa la firma esatta della voce restituita dal browser.
+      Speakit.languageFilter='it-IT';
       const italian=voices.filter(voice=>String(voice.lang||'').toLowerCase().startsWith('it'));
+      const voiceList=italian.map(voice=>voice.name+' ['+voice.lang+', '+(voice.localService===false?'online': 'dispositivo')+']');
       const preferred=italian.find(voice=>voice.localService===false)
         ||italian.find(voice=>/online|cloud|natural/i.test(voice.name||''));
-      if(!preferred)throw new Error('Chrome non espone in questo momento una voce italiana remota. Controlla le voci vocali installate/disponibili nel sistema e riprova.');
-      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+' (voce remota)');
+      if(!preferred){
+        const detail=voiceList.length?'Voci italiane trovate: '+voiceList.join('; '):'Chrome non ha restituito voci italiane.';
+        say('Nessuna voce italiana online rilevata. '+detail);
+        return;
+      }
+      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+' (voce online). Voci italiane: '+voiceList.join('; '));
       await Speakit.readText(text,'it-IT',preferred.name);
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
     }catch(speakitError){
@@ -373,11 +381,11 @@ function startGuide(recipe,servings,startIndex=0){
       if(typeof onComplete==='function')onComplete();
     }
   };
-  read.onclick=()=>speakText(steps[index].instruction);
+  read.onclick=()=>{speechStatus.textContent='Pulsante premuto: ricerca delle voci italiane…';speakText(steps[index].instruction);};
   const readAll=node('button','▤ Leggi ricetta');readAll.className='chefai-player-button chefai-player-secondary';readAll.type='button';
   readAll.onclick=()=>{
     const fullText=[recipe.name||'Ricetta','Porzioni: '+servings,'Ingredienti:',...(recipe.ingredients||[]).map(item=>[item.name,item.quantity!==null&&item.quantity!==undefined?item.quantity:null,item.unit||null].filter(value=>value!==null&&value!=='').join(', ')),'Attrezzatura:',...(recipe.equipment||[]),'Procedimento:',...steps.map((step,i)=>'Passaggio '+(i+1)+'. '+step.instruction)].join('. ');
-    speakText(fullText);
+    speechStatus.textContent='Pulsante premuto: ricerca delle voci italiane…';speakText(fullText);
   };
   const stopRead=node('button','■ Interrompi');stopRead.className='chefai-player-button chefai-player-stop';stopRead.type='button';
   stopRead.onclick=()=>{stopTTS();say('Lettura interrotta.');};
