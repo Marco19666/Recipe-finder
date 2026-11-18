@@ -336,9 +336,9 @@ function startGuide(recipe,servings,startIndex=0){
       if(typeof onComplete==='function')onComplete();
       return;
     }
-    let speakitStarted=false;
+    let speakitInvoked=false;
     try{
-      // SpeakIt usa lo stesso motore vocale del browser: non avviare il fallback dopo l'inizio della lettura.
+      // Seleziona prima una voce italiana remota/online, se il dispositivo ne espone una.
       const Speakit=await loadSpeakit();
       if(playbackId!==ttsPlaybackId)return;
       Speakit.utteranceRate=0.96;
@@ -348,26 +348,27 @@ function startGuide(recipe,servings,startIndex=0){
       const voices=await Speakit.getVoices();
       if(playbackId!==ttsPlaybackId)return;
       const italian=voices.filter(voice=>/^it(-|_)/i.test(voice.lang));
-      const preferred=italian.find(voice=>/natural|online/i.test(voice.name))
+      const preferred=italian.find(voice=>voice.localService===false)
+        ||italian.find(voice=>/natural|online|cloud/i.test(voice.name))
         ||italian.find(voice=>/google/i.test(voice.name))
-        ||italian.find(voice=>voice.localService===false)
         ||italian[0];
+      const isOnline=preferred?.localService===false||/online|cloud/i.test(preferred?.name||'');
       say(preferred
-        ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name
+        ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+(isOnline?' (voce online)':' (voce disponibile sul dispositivo)')
         :'Chef-AI sta leggendo con SpeakIt.js · voce italiana predefinita');
-      const speakitPlayback=Speakit.readText(text,'it-IT',preferred?.name);
-      speakitStarted=window.speechSynthesis.speaking;
-      await speakitPlayback;
+      speakitInvoked=true;
+      await Speakit.readText(text,'it-IT',preferred?.name);
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
       return;
     }catch(speakitError){
       if(playbackId!==ttsPlaybackId)return;
-      if(speakitStarted){
-        say('La lettura SpeakIt.js è stata interrotta o non è riuscita.');
+      if(speakitInvoked){
+        // SpeakIt è già stato invocato: non avviare un secondo parlato in caso di errore.
+        say('La lettura SpeakIt.js non è riuscita o è stata interrotta. Riprova.');
         if(typeof onComplete==='function')onComplete();
         return;
       }
-      // Fallback solo se SpeakIt non è riuscito ad avviare alcuna lettura.
+      // Fallback locale soltanto se SpeakIt non è arrivato alla chiamata di lettura.
       try{
         window.speechSynthesis.cancel();
         const utterance=new SpeechSynthesisUtterance(text);
