@@ -336,8 +336,9 @@ function startGuide(recipe,servings,startIndex=0){
       if(typeof onComplete==='function')onComplete();
       return;
     }
+    let speakitStarted=false;
     try{
-      // Prima scelta: Speakit-JS. La libreria usa le voci rese disponibili dal browser/dispositivo.
+      // SpeakIt usa lo stesso motore vocale del browser: non avviare il fallback dopo l'inizio della lettura.
       const Speakit=await loadSpeakit();
       if(playbackId!==ttsPlaybackId)return;
       Speakit.utteranceRate=0.96;
@@ -354,12 +355,19 @@ function startGuide(recipe,servings,startIndex=0){
       say(preferred
         ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name
         :'Chef-AI sta leggendo con SpeakIt.js · voce italiana predefinita');
-      await Speakit.readText(text,'it-IT',preferred?.name);
+      const speakitPlayback=Speakit.readText(text,'it-IT',preferred?.name);
+      speakitStarted=window.speechSynthesis.speaking;
+      await speakitPlayback;
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
       return;
     }catch(speakitError){
       if(playbackId!==ttsPlaybackId)return;
-      // Riserva: API vocale nativa, mantenuta indipendente dal wrapper SpeakIt.js.
+      if(speakitStarted){
+        say('La lettura SpeakIt.js è stata interrotta o non è riuscita.');
+        if(typeof onComplete==='function')onComplete();
+        return;
+      }
+      // Fallback solo se SpeakIt non è riuscito ad avviare alcuna lettura.
       try{
         window.speechSynthesis.cancel();
         const utterance=new SpeechSynthesisUtterance(text);
