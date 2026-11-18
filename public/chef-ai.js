@@ -346,16 +346,16 @@ function startGuide(recipe,servings,startIndex=0){
       Speakit.languageFilter='it';
       const voices=await Speakit.getVoices();
       if(playbackId!==ttsPlaybackId)return;
-      const italian=voices.filter(voice=>/^it(-|_)/i.test(voice.lang));
+      // Accetta sia "it" sia codici regionali come "it-IT" e "it_IT".
+      const italian=voices.filter(voice=>String(voice.lang||'').toLowerCase().startsWith('it'));
       const preferred=italian.find(voice=>voice.localService===false)
-        ||italian.find(voice=>/natural|online|cloud/i.test(voice.name))
+        ||italian.find(voice=>/online|cloud|natural/i.test(voice.name))
         ||italian.find(voice=>/google/i.test(voice.name))
         ||italian[0];
-      const isOnline=preferred?.localService===false||/online|cloud/i.test(preferred?.name||'');
-      say(preferred
-        ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+(isOnline?' (voce online)':' (voce disponibile sul dispositivo)')
-        :'Chef-AI sta leggendo con SpeakIt.js · voce italiana predefinita');
-      await Speakit.readText(text,'it-IT',preferred?.name);
+      if(!preferred)throw new Error('Nessuna voce italiana è stata restituita dal browser.');
+      const isOnline=preferred.localService===false||/online|cloud/i.test(preferred.name||'');
+      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+(isOnline?' (voce online/remota)':' (voce disponibile sul dispositivo)'));
+      await Speakit.readText(text,'it-IT',preferred.name);
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
     }catch(speakitError){
       if(playbackId!==ttsPlaybackId)return;
