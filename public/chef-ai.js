@@ -316,36 +316,74 @@ function startGuide(recipe,servings,startIndex=0){
       .replace(/°\s*C\b/gi,'gradi Celsius')
       .replace(/\b(?:forno\s*)?(ventilato)\b/gi,'ventilato');
   }
+  let speakitModulePromise=null;
+  const loadSpeakit=()=>{
+    if(!speakitModulePromise){
+      speakitModulePromise=import('/speakit.1.1.0.min.js').then(module=>module.default).catch(error=>{
+        speakitModulePromise=null;
+        throw error;
+      });
+    }
+    return speakitModulePromise;
+  };
   const speakText=async (text,onComplete)=>{
     text=expandCookingAbbreviations(text);
-    say('Sto preparando la voce del dispositivo…');
+    say('Avvio della sintesi vocale…');
     stopTTS();
     const playbackId=ttsPlaybackId;
-    try{
-      if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance)throw Error('Sintesi vocale non supportata da questo browser.');
-      const utterance=new SpeechSynthesisUtterance(text);
-      utterance.lang='it-IT';
-      utterance.rate=0.96;
-      utterance.pitch=1;
-      const chooseVoice=()=>{
-        const voices=window.speechSynthesis.getVoices();
-        const italian=voices.find(voice=>/^it(-|_)/i.test(voice.lang));
-        if(italian)utterance.voice=italian;
-      };
-      chooseVoice();
-      utterance.onstart=()=>{if(playbackId===ttsPlaybackId)say('Lettura in corso con la voce italiana disponibile sul dispositivo.')};
-      utterance.onend=()=>{if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete()};
-      utterance.onerror=event=>{
-        if(playbackId!==ttsPlaybackId)return;
-        say('La sintesi vocale del dispositivo non è riuscita ('+(event.error||'errore audio')+'). Controlla le impostazioni vocali e riprova.');
-        if(typeof onComplete==='function')onComplete();
-      };
-      window.speechSynthesis.speak(utterance);
-      say('Voce del dispositivo: avvio della lettura…');
-    }catch(error){
-      if(playbackId!==ttsPlaybackId)return;
-      say('Voce non disponibile: '+(error.message||'errore sconosciuto')+'. Controlla le impostazioni vocali del dispositivo.');
+    if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance){
+      say('Sintesi vocale non supportata da questo browser.');
       if(typeof onComplete==='function')onComplete();
+      return;
+    }
+    try{
+      // Prima scelta: Speakit-JS. La libreria usa le voci rese disponibili dal browser/dispositivo.
+      const Speakit=await loadSpeakit();
+      if(playbackId!==ttsPlaybackId)return;
+      Speakit.utteranceRate=0.96;
+      Speakit.utterancePitch=1;
+      Speakit.utteranceVolume=1;
+      Speakit.languageFilter='it';
+      const voices=await Speakit.getVoices();
+      if(playbackId!==ttsPlaybackId)return;
+      const italian=voices.filter(voice=>/^it(-|_)/i.test(voice.lang));
+      const preferred=italian.find(voice=>/natural|online/i.test(voice.name))
+        ||italian.find(voice=>/google/i.test(voice.name))
+        ||italian.find(voice=>voice.localService===false)
+        ||italian[0];
+      say(preferred
+        ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name
+        :'Chef-AI sta leggendo con SpeakIt.js · voce italiana predefinita');
+      await Speakit.readText(text,'it-IT',preferred?.name);
+      if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
+      return;
+    }catch(speakitError){
+      if(playbackId!==ttsPlaybackId)return;
+      // Riserva: API vocale nativa, mantenuta indipendente dal wrapper SpeakIt.js.
+      try{
+        window.speechSynthesis.cancel();
+        const utterance=new SpeechSynthesisUtterance(text);
+        utterance.lang='it-IT';
+        utterance.rate=0.96;
+        utterance.pitch=1;
+        const voices=window.speechSynthesis.getVoices();
+        const italian=voices.filter(voice=>/^it(-|_)/i.test(voice.lang));
+        const localVoice=italian.find(voice=>voice.localService===true)||italian[0];
+        if(localVoice)utterance.voice=localVoice;
+        utterance.onstart=()=>{if(playbackId===ttsPlaybackId)say('SpeakIt.js non disponibile: uso la voce locale del dispositivo.')};
+        utterance.onend=()=>{if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete()};
+        utterance.onerror=event=>{
+          if(playbackId!==ttsPlaybackId)return;
+          say('Anche la voce locale non è riuscita ('+(event.error||'errore audio')+'). Controlla le impostazioni vocali del dispositivo.');
+          if(typeof onComplete==='function')onComplete();
+        };
+        window.speechSynthesis.speak(utterance);
+        say('SpeakIt.js non disponibile: avvio della voce locale…');
+      }catch(error){
+        if(playbackId!==ttsPlaybackId)return;
+        say('Sintesi vocale non disponibile: '+(error.message||speakitError?.message||'errore sconosciuto')+'.');
+        if(typeof onComplete==='function')onComplete();
+      }
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
