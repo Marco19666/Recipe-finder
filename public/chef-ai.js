@@ -343,18 +343,28 @@ function startGuide(recipe,servings,startIndex=0){
       Speakit.utteranceRate=0.96;
       Speakit.utterancePitch=1;
       Speakit.utteranceVolume=1;
-      Speakit.languageFilter='it';
-      const voices=await Speakit.getVoices();
+      // Legge l'elenco live del browser: la cache interna di SpeakIt può essere obsoleta.
+      let voices=window.speechSynthesis.getVoices();
+      if(!voices.length){
+        voices=await new Promise(resolve=>{
+          let settled=false;
+          const finish=()=>{
+            if(settled)return;
+            settled=true;
+            window.speechSynthesis.removeEventListener?.('voiceschanged',finish);
+            clearTimeout(timeout);
+            resolve(window.speechSynthesis.getVoices());
+          };
+          const timeout=setTimeout(finish,2500);
+          window.speechSynthesis.addEventListener?.('voiceschanged',finish,{once:true});
+        });
+      }
       if(playbackId!==ttsPlaybackId)return;
-      // Accetta sia "it" sia codici regionali come "it-IT" e "it_IT".
       const italian=voices.filter(voice=>String(voice.lang||'').toLowerCase().startsWith('it'));
       const preferred=italian.find(voice=>voice.localService===false)
-        ||italian.find(voice=>/online|cloud|natural/i.test(voice.name))
-        ||italian.find(voice=>/google/i.test(voice.name))
-        ||italian[0];
-      if(!preferred)throw new Error('Nessuna voce italiana è stata restituita dal browser.');
-      const isOnline=preferred.localService===false||/online|cloud/i.test(preferred.name||'');
-      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+(isOnline?' (voce online/remota)':' (voce disponibile sul dispositivo)'));
+        ||italian.find(voice=>/online|cloud|natural/i.test(voice.name||''));
+      if(!preferred)throw new Error('Chrome non espone in questo momento una voce italiana remota. Controlla le voci vocali installate/disponibili nel sistema e riprova.');
+      say('Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+' (voce remota)');
       await Speakit.readText(text,'it-IT',preferred.name);
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
     }catch(speakitError){
