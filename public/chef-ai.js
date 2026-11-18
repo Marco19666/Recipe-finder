@@ -336,9 +336,8 @@ function startGuide(recipe,servings,startIndex=0){
       if(typeof onComplete==='function')onComplete();
       return;
     }
-    let speakitInvoked=false;
     try{
-      // Seleziona prima una voce italiana remota/online, se il dispositivo ne espone una.
+      // SpeakIt è l'unico gestore della lettura: nessun fallback nativo separato.
       const Speakit=await loadSpeakit();
       if(playbackId!==ttsPlaybackId)return;
       Speakit.utteranceRate=0.96;
@@ -356,43 +355,12 @@ function startGuide(recipe,servings,startIndex=0){
       say(preferred
         ?'Chef-AI sta leggendo con SpeakIt.js · '+preferred.name+(isOnline?' (voce online)':' (voce disponibile sul dispositivo)')
         :'Chef-AI sta leggendo con SpeakIt.js · voce italiana predefinita');
-      speakitInvoked=true;
       await Speakit.readText(text,'it-IT',preferred?.name);
       if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete();
-      return;
     }catch(speakitError){
       if(playbackId!==ttsPlaybackId)return;
-      if(speakitInvoked){
-        // SpeakIt è già stato invocato: non avviare un secondo parlato in caso di errore.
-        say('La lettura SpeakIt.js non è riuscita o è stata interrotta. Riprova.');
-        if(typeof onComplete==='function')onComplete();
-        return;
-      }
-      // Fallback locale soltanto se SpeakIt non è arrivato alla chiamata di lettura.
-      try{
-        window.speechSynthesis.cancel();
-        const utterance=new SpeechSynthesisUtterance(text);
-        utterance.lang='it-IT';
-        utterance.rate=0.96;
-        utterance.pitch=1;
-        const voices=window.speechSynthesis.getVoices();
-        const italian=voices.filter(voice=>/^it(-|_)/i.test(voice.lang));
-        const localVoice=italian.find(voice=>voice.localService===true)||italian[0];
-        if(localVoice)utterance.voice=localVoice;
-        utterance.onstart=()=>{if(playbackId===ttsPlaybackId)say('SpeakIt.js non disponibile: uso la voce locale del dispositivo.')};
-        utterance.onend=()=>{if(playbackId===ttsPlaybackId&&typeof onComplete==='function')onComplete()};
-        utterance.onerror=event=>{
-          if(playbackId!==ttsPlaybackId)return;
-          say('Anche la voce locale non è riuscita ('+(event.error||'errore audio')+'). Controlla le impostazioni vocali del dispositivo.');
-          if(typeof onComplete==='function')onComplete();
-        };
-        window.speechSynthesis.speak(utterance);
-        say('SpeakIt.js non disponibile: avvio della voce locale…');
-      }catch(error){
-        if(playbackId!==ttsPlaybackId)return;
-        say('Sintesi vocale non disponibile: '+(error.message||speakitError?.message||'errore sconosciuto')+'.');
-        if(typeof onComplete==='function')onComplete();
-      }
+      say('SpeakIt.js non è riuscito ad avviare la lettura. Nessun motore alternativo è stato avviato. '+(speakitError?.message||'Riprova.'));
+      if(typeof onComplete==='function')onComplete();
     }
   };
   read.onclick=()=>speakText(steps[index].instruction);
