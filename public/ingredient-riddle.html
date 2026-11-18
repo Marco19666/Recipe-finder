@@ -65,7 +65,7 @@ function loadRound(){
  target=order[round];revealed=1;earned=25;locked=false;
  options=shuffle([target,...shuffle(bank.filter(x=>x!==target)).slice(0,9)]);
  $("round").textContent="Ricetta "+(round+1)+" di 10";$("value").textContent="In palio: "+earned+" punti";
- $("bar").style.width=(round/10*100)+"%";$("hint").textContent="Primo ingrediente: quale ricetta è?";$("feedback").className="feedback";$("feedback").textContent="";$("next").disabled=true;
+ $("bar").style.width=(round/10*100)+"%";$("hint").textContent="Primo ingrediente: quale ricetta è?";$("feedback").className="feedback";$("feedback").textContent="";$("next").disabled=true;$("next").textContent=round===9?"Vedi il risultato →":"Prossima ricetta →";
  renderIngredients();renderAnswers()
 }
 function renderIngredients(){
